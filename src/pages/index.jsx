@@ -167,7 +167,7 @@ const DashboardPage = () => {
           maxHeight: "100%",
           position: "relative",
           ".MuiTableCell-root": { p: 1 },
-          overflow: "hidden",
+          overflowX: "hidden",
         }}
       >
         <Table stickyHeader aria-label="sticky table">
@@ -274,7 +274,7 @@ const DashboardPage = () => {
               ))}
             </TableRow>
           </TableHead>
-          <TableBody sx={{ overflow: "hidden" }}>
+          <TableBody>
             {/* ====================== Table Content ======================== */}
             {rows.map((row, ind) => {
               return (
