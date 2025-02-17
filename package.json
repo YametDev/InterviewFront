@@ -1,0 +1,50 @@
+{
+  "name": "gradepost",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "export": "next export"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.11.3",
+    "@emotion/styled": "^11.11.0",
+    "@fontsource/roboto": "^5.0.8",
+    "@mui/icons-material": "^5.15.3",
+    "@mui/lab": "^5.0.0-alpha.159",
+    "@mui/material": "^5.15.3",
+    "@reduxjs/toolkit": "^2.0.1",
+    "axios": "^1.6.5",
+    "child_process": "^1.0.2",
+    "cropperjs": "^1.5.11",
+    "cropperjs-react": "^1.5.2",
+    "dotenv": "^16.3.1",
+    "getmac": "^6.6.0",
+    "next": "14.0.4",
+    "next-redux-wrapper": "^8.1.0",
+    "qrcode.react": "^3.1.0",
+    "react": "^18",
+    "react-cropper": "^2.3.3",
+    "react-cropperjs": "^1.2.5",
+    "react-dom": "^18",
+    "react-easy-crop": "^5.0.5",
+    "react-imask": "^7.4.0",
+    "react-number-format": "^5.3.4",
+    "react-phone-number-input": "^3.3.10",
+    "react-redux": "^9.1.0",
+    "redux-logger": "^3.0.6"
+  },
+  "devDependencies": {
+    "css-loader": "^6.10.0",
+    "eslint": "^8",
+    "eslint-config-next": "14.0.4",
+    "style-loader": "^3.3.4"
+  },
+  "engines": {
+    "node": "18.19.0",
+    "npm": "10.2.3"
+  }
+}
