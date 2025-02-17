@@ -331,7 +331,9 @@ const DashboardPage = () => {
                         <a href={row[column.toLowerCase()]}>
                           {row[column.toLowerCase()]}
                         </a>
-                      ) : (
+                      ) : column === "Company" || column === "Salary" ? (
+                        <b>{row[column.toLowerCase()]}</b>
+                      ) :(
                         <>{row[column.toLowerCase()]}</>
                       )}
                     </TableCell>
