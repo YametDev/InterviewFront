@@ -9,7 +9,7 @@ export const ComboSelector = (props) => {
       size="small"
       sx={{ fontSize: "12px !important" }}
       fullWidth
-      tabindex={-1}
+      tabIndex={-1}
     >
       <Select
         size="small"

@@ -60,10 +60,10 @@ const DashboardPage = () => {
       {
         from: page * rowsPerPage,
         count: rowsPerPage,
-        link: { $regex: application.link, $options: "i" },
         company: { $regex: application.company, $options: "i" },
         role: { $regex: application.role, $options: "i" },
         state: { $gt: application.state - 1 },
+        description: { $regex: application.description, $options: "i" },
       },
       (response) => {
         if (response.result && Array.isArray(response.data)) {
@@ -285,6 +285,7 @@ const DashboardPage = () => {
                       maxWidth: 80,
                       width: 80,
                       padding: "2px !important",
+                      height: "40px !important",
                     }}
                   >
                     <Checkbox
@@ -312,6 +313,8 @@ const DashboardPage = () => {
                         maxWidth: width[column],
                         minWidth: width[column],
                         width: width[column],
+                        maxHeight: "40px !important",
+                        height: "40px !important",
                         fontSize: "12px !important",
                         overflow: "hidden",
                         whiteSpace: "nowrap",
@@ -333,8 +336,8 @@ const DashboardPage = () => {
                         </a>
                       ) : column === "Company" || column === "Salary" ? (
                         <b>{row[column.toLowerCase()]}</b>
-                      ) :(
-                        <>{row[column.toLowerCase()]}</>
+                      ) : (
+                        <p>{row[column.toLowerCase()]}</p>
                       )}
                     </TableCell>
                   ))}
