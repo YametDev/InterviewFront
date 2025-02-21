@@ -63,7 +63,7 @@ const DashboardPage = () => {
         company: { $regex: application.company, $options: "i" },
         role: { $regex: application.role, $options: "i" },
         state: { $gt: application.state - 1 },
-        description: { $regex: application.description, $options: "i" },
+        // description: { $regex: application.description, $options: "i" },
       },
       (response) => {
         if (response.result && Array.isArray(response.data)) {
