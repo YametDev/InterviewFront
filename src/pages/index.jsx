@@ -34,7 +34,7 @@ const DashboardPage = () => {
     Company: "80px !important",
     Role: "130px !important",
     Salary: "80px !important",
-    State: "80px !important",
+    State: "60px !important",
   };
   const prep = {
     link: "",
@@ -45,6 +45,7 @@ const DashboardPage = () => {
     state: 0,
   };
   const [loading, setLoading] = useState(false);
+  const [state, setState] = useState(false);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -55,17 +56,24 @@ const DashboardPage = () => {
   const [editIndex, setEditIndex] = useState(0);
   const [editMode, setEditMode] = useState(false);
 
-  const handleReload = () => {
+  const handleReload = (anim = false) => {
+    if (anim) {
+      setLoading(true);
+    }
     lookupApplication(
       {
         from: page * rowsPerPage,
         count: rowsPerPage,
-        link: { $regex: application.link, $options: "i" },
         company: { $regex: application.company, $options: "i" },
+        description: { $regex: state ? application.description : "", $options: "i" },
+        link: { $regex: state ? application.link : "", $options: "i" },
         role: { $regex: application.role, $options: "i" },
         state: { $gt: application.state - 1 },
       },
       (response) => {
+        if (anim) {
+          setLoading(false);
+        }
         if (response.result && Array.isArray(response.data)) {
           setRows(response.data);
           setStates(response.data.map(() => false));
@@ -153,12 +161,12 @@ const DashboardPage = () => {
   };
 
   useEffect(() => {
-    handleReload();
-  }, [page, rowsPerPage, application]);
+    handleReload(true);
+  }, [page, rowsPerPage]);
 
   useEffect(() => {
-    console.log(1);
-  }, []);
+    handleReload();
+  }, [application])
 
   return (
     <Paper sx={{ height: "100%" }}>
@@ -233,6 +241,13 @@ const DashboardPage = () => {
                   width: 80,
                 }}
               >
+                <Checkbox
+                  size="small"
+                  checked={state}
+                  onChange={(e) => {
+                    setState(!state);
+                  }}
+                ></Checkbox>
                 <IconButton color="primary" onClick={handleAdd} size="small">
                   <AddIcon />
                 </IconButton>
