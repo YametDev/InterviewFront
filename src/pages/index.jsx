@@ -67,7 +67,8 @@ const DashboardPage = () => {
         company: { $regex: application.company, $options: "i" },
         role: { $regex: application.role, $options: "i" },
         state: { $gt: application.state - 1 },
-        // description: { $regex: application.description, $options: "i" },
+        link: { $gt: state ? application.link : "" },
+        description: { $regex: state ? application.description : "", $options: "i" },
       },
       (response) => {
         if (anim) {
