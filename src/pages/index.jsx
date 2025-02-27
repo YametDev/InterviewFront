@@ -45,7 +45,6 @@ const DashboardPage = () => {
     state: 0,
   };
   const [loading, setLoading] = useState(false);
-  const [state, setState] = useState(false);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -56,6 +55,8 @@ const DashboardPage = () => {
   const [editIndex, setEditIndex] = useState(0);
   const [editMode, setEditMode] = useState(false);
 
+  const handleEscape = str => str.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+
   const handleReload = (anim = false) => {
     if (anim) {
       setLoading(true);
@@ -64,11 +65,11 @@ const DashboardPage = () => {
       {
         from: page * rowsPerPage,
         count: rowsPerPage,
-        company: { $regex: application.company, $options: "i" },
-        role: { $regex: application.role, $options: "i" },
+        company: { $regex: handleEscape(application.company), $options: "i" },
+        role: { $regex: handleEscape(application.role), $options: "i" },
         state: { $gt: application.state - 1 },
-        link: { $regex: state ? application.link : "" },
-        description: { $regex: state ? application.description : "", $options: "i" },
+        link: { $regex: handleEscape(application.link) },
+        description: { $regex: handleEscape(application.description) },
       },
       (response) => {
         if (anim) {
@@ -241,13 +242,6 @@ const DashboardPage = () => {
                   width: 80,
                 }}
               >
-                <Checkbox
-                  size="small"
-                  checked={state}
-                  onChange={(e) => {
-                    setState(!state);
-                  }}
-                ></Checkbox>
                 <IconButton color="primary" onClick={handleAdd} size="small">
                   <AddIcon />
                 </IconButton>
