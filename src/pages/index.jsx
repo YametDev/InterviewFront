@@ -1,5 +1,4 @@
 import { ApplicationEditer, InputBox } from "@/components";
-// import { CheckBox } from "@mui/icons-material";
 import {
   Paper,
   Table,
@@ -13,6 +12,11 @@ import {
   IconButton,
   Dialog,
   CircularProgress,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
@@ -25,18 +29,36 @@ import {
   updateApplication,
 } from "@/actions";
 import { StateSelector } from "@/components/StateSelector";
+import { makeStyles } from "@mui/styles";
+import dayjs from "dayjs";
 
-const columns = ["State", "Link", "Company", "Role", "Salary", "Description"];
+
+const columns = ["State", "Date", "Link", "Company", "Role", "Salary", "Description"];
+const useStyles = makeStyles((theme) => ({
+  container: {
+    display: 'flex',
+    flexWrap: 'wrap',
+  },
+  textField: {
+    marginLeft: 0,
+    marginRight: 0,
+    width: 200,
+  },
+}));
+
 
 const DashboardPage = () => {
+  const classes = useStyles();
   const width = {
     Link: "100px !important",
+    Date: "100px !important",
     Company: "80px !important",
     Role: "130px !important",
     Salary: "80px !important",
-    State: "80px !important",
+    State: "70px !important",
   };
   const prep = {
+    date: "",
     link: "",
     company: "",
     role: "",
@@ -55,7 +77,32 @@ const DashboardPage = () => {
   const [editIndex, setEditIndex] = useState(0);
   const [editMode, setEditMode] = useState(false);
 
-  const handleEscape = str => str.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+  const [email, setEmail] = useState("");
+  const [tempEmail, setTempEmail] = useState("");
+
+  const handleEscape = (str) => str.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+
+  const setCookie = (cname, cvalue, exdays) => {
+    const d = new Date();
+    d.setTime(d.getTime() + exdays * 24 * 60 * 60 * 1000);
+    let expires = "expires=" + d.toUTCString();
+    document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+  };
+
+  const getCookie = (cname) => {
+    let name = cname + "=";
+    let ca = document.cookie.split(";");
+    for (let i = 0; i < ca.length; i++) {
+      let c = ca[i];
+      while (c.charAt(0) == " ") {
+        c = c.substring(1);
+      }
+      if (c.indexOf(name) == 0) {
+        return c.substring(name.length, c.length);
+      }
+    }
+    return "";
+  };
 
   const handleReload = (anim = false) => {
     if (anim) {
@@ -63,6 +110,8 @@ const DashboardPage = () => {
     }
     lookupApplication(
       {
+        date: application.date.length === 0 ? '0000-00-00' : application.date,
+        offset: new Date().getTimezoneOffset(),
         from: page * rowsPerPage,
         count: rowsPerPage,
         company: { $regex: handleEscape(application.company), $options: "i" },
@@ -161,241 +210,287 @@ const DashboardPage = () => {
     handleUpdate(editIndex, editApplication);
   };
 
+  const handleConfirmEmail = () => {
+    setEmail(tempEmail);
+    setCookie("jobseeker", tempEmail);
+  }
+
   useEffect(() => {
-    handleReload(true);
+    if (email.length) {
+      handleReload(true);
+    }
   }, [page, rowsPerPage]);
 
   useEffect(() => {
-    handleReload();
+    if (email.length) {
+      handleReload();
+    }
   }, [application]);
+
+  useEffect(() => {
+    const email = getCookie("jobseeker");
+    if (email.length) {
+      setEmail(email);
+      handleReload(true);
+    }
+  }, []);
 
   return (
     <Paper sx={{ height: "100%" }}>
-      <TableContainer
-        sx={{
-          maxHeight: "100%",
-          position: "relative",
-          ".MuiTableCell-root": { p: 1 },
-          overflowX: "hidden",
-        }}
-      >
-        <Table stickyHeader aria-label="sticky table">
-          <TableHead
-            sx={{
-              position: "sticky",
-              top: "0px",
-              background: "white",
-              zIndex: "40",
-            }}
-          >
-            {/* ====================== Table Header ======================= */}
-            <TableRow>
-              <TableCell
-                sx={{
-                  padding: "2px !important",
-                  minWidth: 80,
-                  maxWidth: 80,
-                  width: 80,
-                }}
-              >
-                <Checkbox
-                  size="small"
-                  checked={states.length && states.every((state) => state)}
-                  indeterminate={
-                    states.filter((state) => state).length !== 0 &&
-                    states.filter((state) => state).length !== states.length
-                  }
-                  onChange={(e) => {
-                    setStates(states.map(() => e.target.checked));
-                  }}
-                ></Checkbox>
-                <IconButton
-                  color="error"
-                  onClick={handleDelete}
-                  size="small"
-                  disabled={states.filter((state) => state).length === 0}
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </TableCell>
-              {columns.map((column) => (
+      {email.length !== 0 && (
+        <TableContainer
+          sx={{
+            maxHeight: "100%",
+            position: "relative",
+            ".MuiTableCell-root": { p: 1 },
+            overflowX: "hidden",
+          }}
+        >
+          <Table stickyHeader aria-label="sticky table">
+            <TableHead
+              sx={{
+                position: "sticky",
+                top: "0px",
+                background: "white",
+                zIndex: "40",
+              }}
+            >
+              {/* ====================== Table Header ======================= */}
+              <TableRow>
                 <TableCell
-                  key={column}
                   sx={{
-                    maxWidth: width[column],
-                    minWidth: width[column],
                     padding: "2px !important",
+                    minWidth: 80,
+                    maxWidth: 80,
+                    width: 80,
                   }}
                 >
-                  {column}
+                  <Checkbox
+                    size="small"
+                    checked={states.length && states.every((state) => state)}
+                    indeterminate={
+                      states.filter((state) => state).length !== 0 &&
+                      states.filter((state) => state).length !== states.length
+                    }
+                    onChange={(e) => {
+                      setStates(states.map(() => e.target.checked));
+                    }}
+                  ></Checkbox>
+                  <IconButton
+                    color="error"
+                    onClick={handleDelete}
+                    size="small"
+                    disabled={states.filter((state) => state).length === 0}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
                 </TableCell>
-              ))}
-            </TableRow>
-            {/* ======================  Append Bar  ======================= */}
-            <TableRow>
-              <TableCell
-                sx={{
-                  padding: "2px !important",
-                  textAlign: "center",
-                  minWidth: 80,
-                  maxWidth: 80,
-                  width: 80,
-                }}
-              >
-                <IconButton color="primary" onClick={handleAdd} size="small">
-                  <AddIcon />
-                </IconButton>
-              </TableCell>
-              {columns.map((column) => (
-                <TableCell
-                  key={column}
-                  sx={{
-                    verticalAlign: "bottom",
-                    maxWidth: width[column],
-                    minWidth: width[column],
-                    width: width[column],
-                    padding: "2px !important",
-                  }}
-                >
-                  {column === "State" ? (
-                    <StateSelector
-                      value={application.state}
-                      onChange={(newValue) =>
-                        setApplication({
-                          ...application,
-                          state: newValue,
-                        })
-                      }
-                    ></StateSelector>
-                  ) : (
-                    <InputBox
-                      multiline={column === "Description"}
-                      value={application[column.toLowerCase()] ?? ""}
-                      onChange={(newValue) =>
-                        setApplication({
-                          ...application,
-                          [column.toLowerCase()]: newValue,
-                        })
-                      }
-                    ></InputBox>
-                  )}
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {/* ====================== Table Content ======================== */}
-            {rows.map((row, ind) => {
-              return (
-                <TableRow hover tabIndex={-1} key={ind}>
+                {columns.map((column) => (
                   <TableCell
+                    key={column}
                     sx={{
-                      minWidth: 80,
-                      maxWidth: 80,
-                      width: 80,
+                      maxWidth: width[column],
+                      minWidth: width[column],
                       padding: "2px !important",
-                      height: "40px !important",
                     }}
                   >
-                    <Checkbox
-                      checked={states[ind]}
-                      onChange={(e) => {
-                        let newStates = [...states];
-                        newStates[ind] = e.target.checked;
-                        setStates([...newStates]);
-                      }}
-                      size="small"
-                    ></Checkbox>
-                    <IconButton
-                      color="error"
-                      onClick={() => handleDeleteOne(ind)}
-                      size="small"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
+                    {column}
                   </TableCell>
-                  {columns.map((column, index) => (
-                    <TableCell
-                      key={column}
-                      sx={{
-                        padding: "2px !important",
-                        maxWidth: width[column],
-                        minWidth: width[column],
-                        width: width[column],
-                        maxHeight: "40px !important",
-                        height: "40px !important",
-                        fontSize: "12px !important",
-                        overflow: "hidden",
-                        whiteSpace: "nowrap",
-                      }}
-                      onClick={
-                        index < 2 ? undefined : () => handleOpenApplication(ind)
-                      }
-                    >
-                      {index < 1 ? (
-                        <StateSelector
-                          value={row[column.toLowerCase()]}
-                          onChange={(newValue) =>
-                            handleUpdate(ind, { ...row, state: newValue })
-                          }
-                        ></StateSelector>
-                      ) : column === "Link" ? (
-                        <a href={row[column.toLowerCase()]}>
-                          {row[column.toLowerCase()]}
-                        </a>
-                      ) : column === "Company" || column === "Salary" ? (
-                        <b>{row[column.toLowerCase()]}</b>
-                      ) : (
-                        <p>{row[column.toLowerCase()]}</p>
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              );
-            })}
-
-            {/* ======================== No Content ========================= */}
-            {rows.length === 0 && (
+                ))}
+              </TableRow>
+              {/* ======================  Append Bar  ======================= */}
               <TableRow>
-                <TableCell colSpan={columns.length + 1}>
-                  No data available.
+                <TableCell
+                  sx={{
+                    padding: "2px !important",
+                    textAlign: "center",
+                    minWidth: 80,
+                    maxWidth: 80,
+                    width: 80,
+                  }}
+                >
+                  <IconButton color="primary" onClick={handleAdd} size="small">
+                    <AddIcon />
+                  </IconButton>
                 </TableCell>
-              </TableRow>
-            )}
-
-            {/* ====================== Pagination Bar ======================= */}
-            {rows.length !== 0 && (
-              <TableRow
-                sx={{
-                  position: "sticky",
-                  bottom: "0px",
-                  left: "0px",
-                  right: "0px",
-                  background: "white",
-                }}
-              >
-                <TableCell colSpan={7} sx={{ padding: "2px !important" }}>
-                  <TablePagination
+                {columns.map((column) => (
+                  <TableCell
+                    key={column}
                     sx={{
-                      ".MuiTablePagination-spacer": {
-                        display: "none",
-                      },
+                      verticalAlign: "bottom",
+                      maxWidth: width[column],
+                      minWidth: width[column],
+                      width: width[column],
+                      padding: "2px !important",
                     }}
-                    rowsPerPageOptions={[10, 25, 100]}
-                    component="div"
-                    count={count}
-                    rowsPerPage={rowsPerPage}
-                    page={page}
-                    onPageChange={handleChangePage}
-                    onRowsPerPageChange={handleChangeRowsPerPage}
-                    size="small"
-                  />
-                </TableCell>
+                  >
+                    {column === "State" ? (
+                      <StateSelector
+                        value={application.state}
+                        onChange={(newValue) =>
+                          setApplication({
+                            ...application,
+                            state: newValue,
+                          })
+                        }
+                      ></StateSelector>
+                    ) : (
+                      column === "Date" ? (
+                        <form className={classes.container} noValidate>
+                          <TextField
+                            type="date"
+                            className={classes.textField}
+                            variant="standard"
+                            size="small"
+                            value={application.date}
+                            sx={{
+                              input: {
+                                fontSize: "14px"
+                              }
+                            }}
+                            onChange={(e) =>
+                              setApplication({
+                                ...application,
+                                date: e.target.value
+                              })
+                            }
+                          />
+                        </form>
+                      ) : (
+                        <InputBox
+                          multiline={column === "Description"}
+                          value={application[column.toLowerCase()] ?? ""}
+                          onChange={(newValue) =>
+                            setApplication({
+                              ...application,
+                              [column.toLowerCase()]: newValue,
+                            })
+                          }
+                        ></InputBox>
+                      )
+                    )}
+                  </TableCell>
+                ))}
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {/* ====================== Table Content ======================== */}
+              {rows.map((row, ind) => {
+                return (
+                  <TableRow hover tabIndex={-1} key={ind}>
+                    <TableCell
+                      sx={{
+                        minWidth: 80,
+                        maxWidth: 80,
+                        width: 80,
+                        padding: "2px !important",
+                        height: "40px !important",
+                      }}
+                    >
+                      <Checkbox
+                        checked={states[ind]}
+                        onChange={(e) => {
+                          let newStates = [...states];
+                          newStates[ind] = e.target.checked;
+                          setStates([...newStates]);
+                        }}
+                        size="small"
+                      ></Checkbox>
+                      <IconButton
+                        color="error"
+                        onClick={() => handleDeleteOne(ind)}
+                        size="small"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </TableCell>
+                    {columns.map((column, index) => (
+                      <TableCell
+                        key={column}
+                        sx={{
+                          padding: "2px !important",
+                          maxWidth: width[column],
+                          minWidth: width[column],
+                          width: width[column],
+                          maxHeight: "40px !important",
+                          height: "40px !important",
+                          fontSize: "12px !important",
+                          overflow: "hidden",
+                          whiteSpace: "nowrap",
+                        }}
+                        onClick={
+                          index < 2
+                            ? undefined
+                            : () => handleOpenApplication(ind)
+                        }
+                      >
+                        {index < 1 ? (
+                          <StateSelector
+                            value={row[column.toLowerCase()]}
+                            onChange={(newValue) =>
+                              handleUpdate(ind, { ...row, state: newValue })
+                            }
+                          ></StateSelector>
+                        ) : column === "Date" ? (
+                          <>{row.createdAt}</>
+                        ) : column === "Link" ? (
+                          <a href={row[column.toLowerCase()]}>
+                            {row[column.toLowerCase()]}
+                          </a>
+                        ) : column === "Company" || column === "Salary" ? (
+                          <b>{row[column.toLowerCase()]}</b>
+                        ) : (
+                          <p>{row[column.toLowerCase()]}</p>
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                );
+              })}
+
+              {/* ======================== No Content ========================= */}
+              {rows.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={columns.length + 1}>
+                    No data available.
+                  </TableCell>
+                </TableRow>
+              )}
+
+              {/* ====================== Pagination Bar ======================= */}
+              {rows.length !== 0 && (
+                <TableRow
+                  sx={{
+                    position: "sticky",
+                    bottom: "0px",
+                    left: "0px",
+                    right: "0px",
+                    background: "white",
+                  }}
+                >
+                  <TableCell colSpan={7} sx={{ padding: "2px !important" }}>
+                    <TablePagination
+                      sx={{
+                        ".MuiTablePagination-spacer": {
+                          display: "none",
+                        },
+                      }}
+                      rowsPerPageOptions={[10, 25, 100]}
+                      component="div"
+                      count={count}
+                      rowsPerPage={rowsPerPage}
+                      page={page}
+                      onPageChange={handleChangePage}
+                      onRowsPerPageChange={handleChangeRowsPerPage}
+                      size="small"
+                    />
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
       <ApplicationEditer
         application={editApplication}
         onChange={setEditApplication}
@@ -417,6 +512,18 @@ const DashboardPage = () => {
         }}
       >
         <CircularProgress />
+      </Dialog>
+      <Dialog
+        open={email.length ? false : true}
+      >
+        <DialogTitle>Sign In</DialogTitle>
+        <DialogContent dividers>
+          Input your email
+          <InputBox value={tempEmail} onChange={setTempEmail} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleConfirmEmail}>OK</Button>
+        </DialogActions>
       </Dialog>
     </Paper>
   );
