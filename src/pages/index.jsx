@@ -176,7 +176,7 @@ const DashboardPage = () => {
     setLoading(true);
     updateApplication(
       { 
-        find: { id: newValue.id },
+        id: newValue._id,
         update: {
           link: newValue.link,
           company: newValue.company,
