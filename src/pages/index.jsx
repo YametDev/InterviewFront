@@ -136,7 +136,7 @@ const DashboardPage = () => {
 
   const handleAdd = () => {
     setLoading(true);
-    createApplication({ ...application }, (response) => {
+    createApplication({ email: currentEmail, ...application }, (response) => {
       setLoading(false);
       if (response.result) {
         setApplication({ ...prep });

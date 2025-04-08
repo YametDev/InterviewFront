@@ -188,6 +188,12 @@ export default function SignUp() {
                 onChange={e => setParent(e.target.value)}
               />
             </Grid>
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={<Checkbox value="allowExtraEmails" color="primary" />}
+                label="I want to receive daily report email."
+              />
+            </Grid>
           </Grid>
           <Button
             type="button"
