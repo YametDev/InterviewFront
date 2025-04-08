@@ -175,7 +175,16 @@ const DashboardPage = () => {
   const handleUpdate = (index, newValue) => {
     setLoading(true);
     updateApplication(
-      { find: { id: newValue.id }, update: newValue },
+      { 
+        find: { id: newValue.id },
+        update: {
+          link: newValue.link,
+          company: newValue.company,
+          role: newValue.role,
+          salary: newValue.salary,
+          description: newValue.description
+        }
+      },
       (response) => {
         setLoading(false);
         if (response.result) {
