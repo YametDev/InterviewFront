@@ -222,7 +222,7 @@ const DashboardPage = () => {
   useEffect(() => {
     if (email.length) {
       lookupUser({ $or: [{ email }, { parent: email }] }, (response) => {
-        if (response.result) {
+        if (response.result && response.data.length) {
           setUsers(response.data.map((user) => ({ name: user.name, email: user.email })));
           if (response.data.length) {
             setCurrentEmail(response.data[0].email);
