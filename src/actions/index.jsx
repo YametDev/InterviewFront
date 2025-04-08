@@ -1,3 +1,3 @@
 export * from './config';
-export * from './question';
+export * from './user';
 export * from './application';

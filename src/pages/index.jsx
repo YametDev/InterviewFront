@@ -1,4 +1,4 @@
-import { ApplicationEditer, InputBox } from "@/components";
+import { ApplicationEditer, ComboSelector, InputBox } from "@/components";
 import {
   Paper,
   Table,
@@ -25,19 +25,30 @@ import {
   createApplication,
   deleteApplication,
   deleteManyApplication,
+  getCookie,
   lookupApplication,
+  lookupUser,
+  setCookie,
   updateApplication,
 } from "@/actions";
 import { StateSelector } from "@/components/StateSelector";
 import { makeStyles } from "@mui/styles";
 import dayjs from "dayjs";
+import { useRouter } from "next/router";
 
-
-const columns = ["State", "Date", "Link", "Company", "Role", "Salary", "Description"];
+const columns = [
+  "State",
+  "Date",
+  "Link",
+  "Company",
+  "Role",
+  "Salary",
+  "Description",
+];
 const useStyles = makeStyles((theme) => ({
   container: {
-    display: 'flex',
-    flexWrap: 'wrap',
+    display: "flex",
+    flexWrap: "wrap",
   },
   textField: {
     marginLeft: 0,
@@ -46,9 +57,10 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
-
 const DashboardPage = () => {
   const classes = useStyles();
+  const router = useRouter();
+
   const width = {
     Link: "100px !important",
     Date: "100px !important",
@@ -78,31 +90,10 @@ const DashboardPage = () => {
   const [editMode, setEditMode] = useState(false);
 
   const [email, setEmail] = useState("");
-  const [tempEmail, setTempEmail] = useState("");
+  const [currentEmail, setCurrentEmail] = useState("");
+  const [users, setUsers] = useState([]);
 
   const handleEscape = (str) => str.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
-
-  const setCookie = (cname, cvalue, exdays) => {
-    const d = new Date();
-    d.setTime(d.getTime() + exdays * 24 * 60 * 60 * 1000);
-    let expires = "expires=" + d.toUTCString();
-    document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
-  };
-
-  const getCookie = (cname) => {
-    let name = cname + "=";
-    let ca = document.cookie.split(";");
-    for (let i = 0; i < ca.length; i++) {
-      let c = ca[i];
-      while (c.charAt(0) == " ") {
-        c = c.substring(1);
-      }
-      if (c.indexOf(name) == 0) {
-        return c.substring(name.length, c.length);
-      }
-    }
-    return "";
-  };
 
   const handleReload = (anim = false) => {
     if (anim) {
@@ -110,7 +101,8 @@ const DashboardPage = () => {
     }
     lookupApplication(
       {
-        date: application.date.length === 0 ? '0000-00-00' : application.date,
+        email: currentEmail,
+        date: application.date.length === 0 ? "0000-00-00" : application.date,
         offset: new Date().getTimezoneOffset(),
         from: page * rowsPerPage,
         count: rowsPerPage,
@@ -210,16 +202,16 @@ const DashboardPage = () => {
     handleUpdate(editIndex, editApplication);
   };
 
-  const handleConfirmEmail = () => {
-    setEmail(tempEmail);
-    setCookie("jobseeker", tempEmail);
+  const handleLogout = () => {
+    setCookie("jobseeker", "");
+    router.push('/signin')
   }
 
   useEffect(() => {
-    if (email.length) {
+    if (currentEmail.length) {
       handleReload(true);
     }
-  }, [page, rowsPerPage]);
+  }, [page, rowsPerPage, currentEmail]);
 
   useEffect(() => {
     if (email.length) {
@@ -228,10 +220,26 @@ const DashboardPage = () => {
   }, [application]);
 
   useEffect(() => {
+    if (email.length) {
+      lookupUser({ $or: [{ email }, { parent: email }] }, (response) => {
+        if (response.result) {
+          setUsers(response.data.map((user) => ({ name: user.name, email: user.email })));
+          if (response.data.length) {
+            setCurrentEmail(response.data[0].email);
+          }
+        } else {
+          router.push("/signin");
+        }
+      });
+    }
+  }, [email]);
+
+  useEffect(() => {
     const email = getCookie("jobseeker");
     if (email.length) {
       setEmail(email);
-      handleReload(true);
+    } else {
+      router.push("/signin");
     }
   }, []);
 
@@ -255,6 +263,23 @@ const DashboardPage = () => {
                 zIndex: "40",
               }}
             >
+              {/* ====================== Email Selection ======================= */}
+              <TableRow>
+                <TableCell colSpan={7}>
+                  <ComboSelector
+                    fullWidth={false}
+                    items={users.map((user) => ({
+                      value: user.email,
+                      label: user.name,
+                    }))}
+                    value={currentEmail}
+                    onChange={(e) => setCurrentEmail(e.target.value)}
+                  />
+                </TableCell>
+                <TableCell colSpan={1}>
+                  <Button onClick={handleLogout} color="error" >Logout</Button>
+                </TableCell>
+              </TableRow>
               {/* ====================== Table Header ======================= */}
               <TableRow>
                 <TableCell
@@ -334,40 +359,38 @@ const DashboardPage = () => {
                           })
                         }
                       ></StateSelector>
-                    ) : (
-                      column === "Date" ? (
-                        <form className={classes.container} noValidate>
-                          <TextField
-                            type="date"
-                            className={classes.textField}
-                            variant="standard"
-                            size="small"
-                            value={application.date}
-                            sx={{
-                              input: {
-                                fontSize: "14px"
-                              }
-                            }}
-                            onChange={(e) =>
-                              setApplication({
-                                ...application,
-                                date: e.target.value
-                              })
-                            }
-                          />
-                        </form>
-                      ) : (
-                        <InputBox
-                          multiline={column === "Description"}
-                          value={application[column.toLowerCase()] ?? ""}
-                          onChange={(newValue) =>
+                    ) : column === "Date" ? (
+                      <form className={classes.container} noValidate>
+                        <TextField
+                          type="date"
+                          className={classes.textField}
+                          variant="standard"
+                          size="small"
+                          value={application.date}
+                          sx={{
+                            input: {
+                              fontSize: "14px",
+                            },
+                          }}
+                          onChange={(e) =>
                             setApplication({
                               ...application,
-                              [column.toLowerCase()]: newValue,
+                              date: e.target.value,
                             })
                           }
-                        ></InputBox>
-                      )
+                        />
+                      </form>
+                    ) : (
+                      <InputBox
+                        multiline={column === "Description"}
+                        value={application[column.toLowerCase()] ?? ""}
+                        onChange={(newValue) =>
+                          setApplication({
+                            ...application,
+                            [column.toLowerCase()]: newValue,
+                          })
+                        }
+                      ></InputBox>
                     )}
                   </TableCell>
                 ))}
@@ -512,18 +535,6 @@ const DashboardPage = () => {
         }}
       >
         <CircularProgress />
-      </Dialog>
-      <Dialog
-        open={email.length ? false : true}
-      >
-        <DialogTitle>Sign In</DialogTitle>
-        <DialogContent dividers>
-          Input your email
-          <InputBox value={tempEmail} onChange={setTempEmail} />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleConfirmEmail}>OK</Button>
-        </DialogActions>
       </Dialog>
     </Paper>
   );
