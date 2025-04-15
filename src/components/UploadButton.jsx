@@ -26,7 +26,8 @@ export const UploadButton = (props) => {
       <VisuallyHiddenInput
         type="file"
         id="files"
-        accept="image/png, image/jpeg"
+        accept="application/pdf,application/msword,
+  application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         onChange={onChange}
       />
     </ClickButton>

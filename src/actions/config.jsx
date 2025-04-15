@@ -12,9 +12,9 @@ const successHandler = (handler) => (response) => {
   if (handler) handler(response.data);
 };
 
-export const axiosHandler = (path, param, callback) => {
+export const axiosHandler = (path, param, callback, option = undefined) => {
   axios
-    .post(path, param)
+    .post(path, param, option)
     .then(successHandler(callback))
     .catch(errorHandler(callback));
 };
@@ -32,20 +32,12 @@ export const displayWebsiteLink = (website) =>
     ? website.slice(website.indexOf("//") + 2)
     : website;
 
-export const upload = (params, callback) => {
-  axios
+export const uploadResume = async (params) => {
+  const response = await axios
     .post("/upload_files", params, {
       headers: { "Content-Type": "multipart/form-data" },
-    })
-    .then((response) => {
-      callback(response.data);
-    })
-    .catch((err) => {
-      callback({
-        result: false,
-        data: "Error :" + err,
-      });
     });
+  return response.data;
 };
 
 export const ipAddress = (callback) => {

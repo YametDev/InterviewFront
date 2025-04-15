@@ -1,4 +1,9 @@
-import { ApplicationEditer, ComboSelector, InputBox } from "@/components";
+import {
+  ApplicationEditer,
+  ComboSelector,
+  InputBox,
+  UploadButton,
+} from "@/components";
 import {
   Paper,
   Table,
@@ -30,6 +35,7 @@ import {
   lookupUser,
   setCookie,
   updateApplication,
+  uploadResume,
 } from "@/actions";
 import { StateSelector } from "@/components/StateSelector";
 import { makeStyles } from "@mui/styles";
@@ -43,6 +49,7 @@ const columns = [
   "Company",
   "Role",
   "Salary",
+  "Resume",
   "Description",
 ];
 const useStyles = makeStyles((theme) => ({
@@ -68,6 +75,7 @@ const DashboardPage = () => {
     Role: "130px !important",
     Salary: "80px !important",
     State: "70px !important",
+    Resume: "200px important",
   };
   const prep = {
     date: "",
@@ -92,6 +100,8 @@ const DashboardPage = () => {
   const [email, setEmail] = useState("");
   const [currentEmail, setCurrentEmail] = useState("");
   const [users, setUsers] = useState([]);
+
+  const [upload, setUpload] = useState(undefined);
 
   const handleEscape = (str) => str.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
 
@@ -134,15 +144,32 @@ const DashboardPage = () => {
     setPage(0);
   };
 
-  const handleAdd = () => {
+  const handleUploadResume = async () => {
+    if (!upload) return "";
+    const formData = new FormData();
+    formData.append("file", upload);
+
+    try {
+      const response = await uploadResume(formData);
+      return response.data.webViewLink;
+    } catch (error) {
+      console.log(error);
+      return "";
+    }
+  };
+
+  const handleAdd = async () => {
     setLoading(true);
-    createApplication({ email: currentEmail, ...application }, (response) => {
-      setLoading(false);
-      if (response.result) {
-        setApplication({ ...prep });
-        handleReload();
+    const resume = await handleUploadResume();
+    createApplication(
+      { email: currentEmail, resume, ...application },
+      (response) => {
+        setLoading(false);
+        if (response.result) {
+          setApplication({ ...prep });
+        }
       }
-    });
+    );
   };
 
   const handleDelete = () => {
@@ -175,15 +202,15 @@ const DashboardPage = () => {
   const handleUpdate = (index, newValue) => {
     setLoading(true);
     updateApplication(
-      { 
+      {
         id: newValue._id,
         update: {
           link: newValue.link,
           company: newValue.company,
           role: newValue.role,
           salary: newValue.salary,
-          description: newValue.description
-        }
+          description: newValue.description,
+        },
       },
       (response) => {
         setLoading(false);
@@ -213,8 +240,8 @@ const DashboardPage = () => {
 
   const handleLogout = () => {
     setCookie("jobseeker", "");
-    router.push('/signin')
-  }
+    router.push("/signin");
+  };
 
   useEffect(() => {
     if (currentEmail.length) {
@@ -232,7 +259,12 @@ const DashboardPage = () => {
     if (email.length) {
       lookupUser({ $or: [{ email }, { parent: email }] }, (response) => {
         if (response.result && response.data.length) {
-          setUsers(response.data.map((user) => ({ name: user.name, email: user.email })));
+          setUsers(
+            response.data.map((user) => ({
+              name: user.name,
+              email: user.email,
+            }))
+          );
           if (response.data.length) {
             setCurrentEmail(response.data[0].email);
           }
@@ -260,7 +292,7 @@ const DashboardPage = () => {
             maxHeight: "100%",
             position: "relative",
             ".MuiTableCell-root": { p: 1 },
-            overflowX: "hidden",
+            overflowX: "hidden"
           }}
         >
           <Table stickyHeader aria-label="sticky table">
@@ -286,7 +318,9 @@ const DashboardPage = () => {
                   />
                 </TableCell>
                 <TableCell colSpan={1}>
-                  <Button onClick={handleLogout} color="error" >Logout</Button>
+                  <Button onClick={handleLogout} color="error">
+                    Logout
+                  </Button>
                 </TableCell>
               </TableRow>
               {/* ====================== Table Header ======================= */}
@@ -368,6 +402,14 @@ const DashboardPage = () => {
                           })
                         }
                       ></StateSelector>
+                    ) : column === "Resume" ? (
+                      <UploadButton
+                        onChange={(e) => setUpload(e.target.files[0])}
+                        size="small"
+                        sx={{ fontSize: "12px !important", py: 0, px: 1 }}
+                        text={upload ? "Ready" : "Upload"}
+                        color={upload ? "info" : "warning"}
+                      />
                     ) : column === "Date" ? (
                       <form className={classes.container} noValidate>
                         <TextField
@@ -449,6 +491,8 @@ const DashboardPage = () => {
                           fontSize: "12px !important",
                           overflow: "hidden",
                           whiteSpace: "nowrap",
+                          display: column === "Description" ? "flex" : "table-cell",
+                          flex: column === "Description" ? "1 1 auto" : "",
                         }}
                         onClick={
                           index < 2
@@ -466,13 +510,20 @@ const DashboardPage = () => {
                         ) : column === "Date" ? (
                           <>{row.createdAt}</>
                         ) : column === "Link" ? (
-                          <a href={row[column.toLowerCase()]}>
-                            {row[column.toLowerCase()]}
-                          </a>
+                          <a href={row.link}>{row.link}</a>
                         ) : column === "Company" || column === "Salary" ? (
                           <b>{row[column.toLowerCase()]}</b>
+                        ) : column === "Resume" ? (
+                          row.resume &&
+                          row.resume.length && <a href={row.resume}>View Resume</a>
                         ) : (
-                          <p>{row[column.toLowerCase()]}</p>
+                          <div style={{position: "static", width: "100%", flexGrow: 1, flexShrink: 1, flexBasis: "auto", overflow: "hidden", textIndent: 0, textWrap: "nowrap"}}>
+                            <div style={{display: "flex", overflow: "hidden", textWrap: "nowrap", }}>
+                              <span style={{ flexBasis: 0, flexGrow: 1, flexShrink: 1, overflow: "hidden", textOverflow: "ellipsis", textWrap: "nowrap" }}>
+                                {row[column.toLowerCase()]}
+                              </span>
+                            </div>
+                          </div>
                         )}
                       </TableCell>
                     ))}
