@@ -17,9 +17,6 @@ import {
   IconButton,
   Dialog,
   CircularProgress,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Button,
   TextField,
 } from "@mui/material";
@@ -39,8 +36,23 @@ import {
 } from "@/actions";
 import { StateSelector } from "@/components/StateSelector";
 import { makeStyles } from "@mui/styles";
-import dayjs from "dayjs";
 import { useRouter } from "next/router";
+
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 const columns = [
   "State",
@@ -93,6 +105,7 @@ const DashboardPage = () => {
   const [rows, setRows] = useState([]);
   const [states, setStates] = useState([]);
   const [application, setApplication] = useState(prep);
+  const debouncedApplication = useDebounce(application, 500);
   const [editApplication, setEditApplication] = useState({});
   const [editIndex, setEditIndex] = useState(0);
   const [editMode, setEditMode] = useState(false);
@@ -167,6 +180,7 @@ const DashboardPage = () => {
         setLoading(false);
         if (response.result) {
           setApplication({ ...prep });
+          setUpload(undefined);
         }
       }
     );
@@ -253,7 +267,7 @@ const DashboardPage = () => {
     if (email.length) {
       handleReload();
     }
-  }, [application]);
+  }, [debouncedApplication]);
 
   useEffect(() => {
     if (email.length) {
@@ -295,7 +309,7 @@ const DashboardPage = () => {
             overflowX: "hidden"
           }}
         >
-          <Table stickyHeader aria-label="sticky table">
+          <Table stickyHeader aria-label="sticky table" sx={{width: "100% !important"}}>
             <TableHead
               sx={{
                 position: "sticky",
@@ -489,13 +503,9 @@ const DashboardPage = () => {
                           maxHeight: "40px !important",
                           height: "40px !important",
                           fontSize: "12px !important",
-                          overflow: "hidden",
-                          whiteSpace: "nowrap",
-                          display: column === "Description" ? "flex" : "table-cell",
-                          flex: column === "Description" ? "1 1 auto" : "",
                         }}
                         onClick={
-                          index < 2
+                          index < 2 || index === 6
                             ? undefined
                             : () => handleOpenApplication(ind)
                         }
@@ -515,10 +525,10 @@ const DashboardPage = () => {
                           <b>{row[column.toLowerCase()]}</b>
                         ) : column === "Resume" ? (
                           row.resume &&
-                          row.resume.length && <a href={row.resume}>View Resume</a>
+                          row.resume.length && <a target="_blank" href={row.resume}>View Resume</a>
                         ) : (
-                          <div style={{position: "static", width: "100%", flexGrow: 1, flexShrink: 1, flexBasis: "auto", overflow: "hidden", textIndent: 0, textWrap: "nowrap"}}>
-                            <div style={{display: "flex", overflow: "hidden", textWrap: "nowrap", }}>
+                          <div style={{position: "static", width: "100%", flexGrow: 1, flexShrink: 1, flexBasis: "auto", overflow: "hidden", textIndent: 0, textWrap: "nowrap", alignContent: "center"}}>
+                            <div style={{display: "flex", overflow: "hidden", textWrap: "nowrap"}}>
                               <span style={{ flexBasis: 0, flexGrow: 1, flexShrink: 1, overflow: "hidden", textOverflow: "ellipsis", textWrap: "nowrap" }}>
                                 {row[column.toLowerCase()]}
                               </span>
