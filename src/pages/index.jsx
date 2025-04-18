@@ -20,7 +20,7 @@ import {
   Button,
   TextField,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import {
@@ -37,6 +37,10 @@ import {
 import { StateSelector } from "@/components/StateSelector";
 import { makeStyles } from "@mui/styles";
 import { useRouter } from "next/router";
+import FirstPageRoundedIcon from '@mui/icons-material/FirstPageRounded';
+import LastPageRoundedIcon from '@mui/icons-material/LastPageRounded';
+import ChevronLeftRoundedIcon from '@mui/icons-material/ChevronLeftRounded';
+import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
 
 function useDebounce(value, delay) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -87,7 +91,7 @@ const DashboardPage = () => {
     Role: "130px !important",
     Salary: "80px !important",
     State: "70px !important",
-    Resume: "200px important",
+    Resume: "90px !important",
   };
   const prep = {
     date: "",
@@ -115,6 +119,8 @@ const DashboardPage = () => {
   const [users, setUsers] = useState([]);
 
   const [upload, setUpload] = useState(undefined);
+  const [tableWidth, setTableWidth] = useState(0);
+  const tableContainerRef = useRef(null);
 
   const handleEscape = (str) => str.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
 
@@ -296,20 +302,35 @@ const DashboardPage = () => {
     } else {
       router.push("/signin");
     }
+
+    // Table Width Observe
+    const observer = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        setTableWidth(entry.contentRect.width); // Update the width state
+      }
+    });
+
+    if (tableContainerRef.current) {
+      observer.observe(tableContainerRef.current); // Observe the TableContainer
+    }
+
+    return () => {
+      if (tableContainerRef.current) {
+        observer.unobserve(tableContainerRef.current); // Clean up the observer
+      }
+    };
   }, []);
 
   return (
     <Paper sx={{ height: "100%" }}>
       {email.length !== 0 && (
         <TableContainer
+          ref={tableContainerRef}
           sx={{
-            maxHeight: "100%",
-            position: "relative",
             ".MuiTableCell-root": { p: 1 },
-            overflowX: "hidden"
           }}
         >
-          <Table stickyHeader aria-label="sticky table" sx={{width: "100% !important"}}>
+          <Table stickyHeader aria-label="sticky table">
             <TableHead
               sx={{
                 position: "sticky",
@@ -320,7 +341,7 @@ const DashboardPage = () => {
             >
               {/* ====================== Email Selection ======================= */}
               <TableRow>
-                <TableCell colSpan={7}>
+                <TableCell colSpan={8}>
                   <ComboSelector
                     fullWidth={false}
                     items={users.map((user) => ({
@@ -527,15 +548,20 @@ const DashboardPage = () => {
                           <b>{row[column.toLowerCase()]}</b>
                         ) : column === "Resume" ? (
                           row.resume &&
-                          row.resume.length && <a target="_blank" href={row.resume}>View Resume</a>
+                          row.resume.length && (
+                            <a target="_blank" href={row.resume}>
+                              View Resume
+                            </a>
+                          )
                         ) : (
-                          <div style={{position: "static", width: "100%", flexGrow: 1, flexShrink: 1, flexBasis: "auto", overflow: "hidden", textIndent: 0, textWrap: "nowrap", alignContent: "center"}}>
-                            <div style={{display: "flex", overflow: "hidden", textWrap: "nowrap"}}>
-                              <span style={{ flexBasis: 0, flexGrow: 1, flexShrink: 1, overflow: "hidden", textOverflow: "ellipsis", textWrap: "nowrap" }}>
-                                {row[column.toLowerCase()]}
-                              </span>
-                            </div>
-                          </div>
+                          <p
+                            style={{
+                              width: tableWidth - 766,
+                              overflow: "hidden",
+                            }}
+                          >
+                            {row[column.toLowerCase()]}
+                          </p>
                         )}
                       </TableCell>
                     ))}
@@ -563,7 +589,7 @@ const DashboardPage = () => {
                     background: "white",
                   }}
                 >
-                  <TableCell colSpan={7} sx={{ padding: "2px !important" }}>
+                  <TableCell colSpan={8} sx={{ padding: "2px !important" }}>
                     <TablePagination
                       sx={{
                         ".MuiTablePagination-spacer": {
@@ -578,6 +604,21 @@ const DashboardPage = () => {
                       onPageChange={handleChangePage}
                       onRowsPerPageChange={handleChangeRowsPerPage}
                       size="small"
+                      slotProps={{
+                        select: {
+                          'aria-label': 'Rows per page',
+                        },
+                        actions: {
+                          showFirstButton: true,
+                          showLastButton: true,
+                          slots: {
+                            firstPageIcon: FirstPageRoundedIcon,
+                            lastPageIcon: LastPageRoundedIcon,
+                            nextPageIcon: ChevronRightRoundedIcon,
+                            backPageIcon: ChevronLeftRoundedIcon,
+                          },
+                        }
+                      }}
                     />
                   </TableCell>
                 </TableRow>
