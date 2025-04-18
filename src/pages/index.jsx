@@ -503,6 +503,8 @@ const DashboardPage = () => {
                           maxHeight: "40px !important",
                           height: "40px !important",
                           fontSize: "12px !important",
+                          overflow: "hidden",
+                          whiteSpace: "nowrap",
                         }}
                         onClick={
                           index < 2 || index === 6
