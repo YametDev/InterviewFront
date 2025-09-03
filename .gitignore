@@ -20,6 +20,8 @@
 .DS_Store
 *.pem
 
+jobtracker*.json
+
 # debug
 npm-debug.log*
 yarn-debug.log*
