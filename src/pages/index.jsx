@@ -165,9 +165,7 @@ const DashboardPage = () => {
     }
     lookupApplication(
       {
-        userId: isApplicationOrigin()
-          ? currentUserId
-          : { $in: users.map((user) => user.userId) },
+        userId: currentUserId,
         date: application.date.length === 0 ? "0000-00-00" : application.date,
         offset: new Date().getTimezoneOffset(),
         from: page * rowsPerPage,

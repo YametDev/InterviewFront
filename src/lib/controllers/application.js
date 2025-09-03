@@ -62,7 +62,7 @@ export const lookup = async (req, res) => {
         count,
       });
     } else {
-      res.send({ result: false, message: "Applications not found." });
+      res.send({ result: true, data: [], 0 });
     }
   } catch (error) {
     res.send({ result: false, message: "Error: " + error });
