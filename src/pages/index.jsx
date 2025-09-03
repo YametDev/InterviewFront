@@ -1,9 +1,6 @@
-import {
-  ApplicationEditer,
-  ComboSelector,
-  InputBox,
-  UploadButton,
-} from "@/components";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/router";
+
 import {
   Paper,
   Table,
@@ -20,9 +17,20 @@ import {
   Button,
   TextField,
 } from "@mui/material";
-import { useEffect, useRef, useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+import FirstPageRoundedIcon from "@mui/icons-material/FirstPageRounded";
+import LastPageRoundedIcon from "@mui/icons-material/LastPageRounded";
+import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+
+import {
+  ApplicationEditer,
+  ComboSelector,
+  InputBox,
+  UploadButton,
+  StateSelector
+} from "@/components";
 import {
   createApplication,
   deleteApplication,
@@ -34,13 +42,7 @@ import {
   updateApplication,
   uploadResume,
 } from "@/actions";
-import { StateSelector } from "@/components/StateSelector";
 import { makeStyles } from "@mui/styles";
-import { useRouter } from "next/router";
-import FirstPageRoundedIcon from '@mui/icons-material/FirstPageRounded';
-import LastPageRoundedIcon from '@mui/icons-material/LastPageRounded';
-import ChevronLeftRoundedIcon from '@mui/icons-material/ChevronLeftRounded';
-import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
 
 function useDebounce(value, delay) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -93,6 +95,7 @@ const DashboardPage = () => {
     State: "70px !important",
     Resume: "90px !important",
   };
+
   const prep = {
     date: "",
     link: "",
@@ -102,27 +105,59 @@ const DashboardPage = () => {
     description: "",
     state: 0,
   };
+
   const [loading, setLoading] = useState(false);
+
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [rows, setRows] = useState([]);
   const [states, setStates] = useState([]);
+
   const [application, setApplication] = useState(prep);
   const debouncedApplication = useDebounce(application, 500);
   const [editApplication, setEditApplication] = useState({});
+
   const [editIndex, setEditIndex] = useState(0);
   const [editMode, setEditMode] = useState(false);
 
   const [email, setEmail] = useState("");
-  const [currentEmail, setCurrentEmail] = useState("");
+  const [userId, setUserId] = useState(0);
+  const [currentUserId, setCurrentUserId] = useState(0);
   const [users, setUsers] = useState([]);
 
   const [upload, setUpload] = useState(undefined);
   const [tableWidth, setTableWidth] = useState(0);
   const tableContainerRef = useRef(null);
 
-  const handleEscape = (str) => str.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+  const isApplicationOrigin = () => {
+    return true;
+  }
+
+  const handleEscape = (str) => ({ $regex: str.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"), $options: "i"});
+
+  const handleReloadUserInfo = (email) => {
+    if (email.length) {
+      lookupUser({ $or: [{ email }, { parent: email }] }, (response) => {
+        if (response.result && response.data.length) {
+          const newUserData = response.data.map((user) => {
+            if (user.email === email) {
+              setUserId(user.userId);
+            }
+            return {
+              name: user.name,
+              email: user.email,
+              userId: user.userId,
+            };
+          });
+          setUsers(newUserData);
+          setCurrentUserId(newUserData[0].userId);
+        } else {
+          router.push("/signin");
+        }
+      });
+    }
+  };
 
   const handleReload = (anim = false) => {
     if (anim) {
@@ -130,16 +165,18 @@ const DashboardPage = () => {
     }
     lookupApplication(
       {
-        email: currentEmail,
+        userId: isApplicationOrigin()
+          ? currentUserId
+          : { $in: users.map((user) => user.userId) },
         date: application.date.length === 0 ? "0000-00-00" : application.date,
         offset: new Date().getTimezoneOffset(),
         from: page * rowsPerPage,
         count: rowsPerPage,
-        company: { $regex: handleEscape(application.company), $options: "i" },
-        role: { $regex: handleEscape(application.role), $options: "i" },
+        company: handleEscape(application.company),
+        role: handleEscape(application.role),
         state: { $gt: application.state - 1 },
-        link: { $regex: handleEscape(application.link) },
-        description: { $regex: handleEscape(application.description) },
+        link: handleEscape(application.link),
+        description: handleEscape(application.description),
       },
       (response) => {
         if (anim) {
@@ -181,7 +218,7 @@ const DashboardPage = () => {
     setLoading(true);
     const resume = await handleUploadResume();
     createApplication(
-      { email: currentEmail, resume, ...application },
+      { userId: currentUserId, resume, ...application },
       (response) => {
         setLoading(false);
         if (response.result) {
@@ -264,10 +301,17 @@ const DashboardPage = () => {
   };
 
   useEffect(() => {
-    if (currentEmail.length) {
+    if (currentUserId) {
       handleReload(true);
     }
-  }, [page, rowsPerPage, currentEmail]);
+  }, [page, rowsPerPage]);
+
+  useEffect(() => {
+    if (currentUserId) {
+      setPage(0);
+      handleReload(true);
+    }
+  }, [currentUserId]);
 
   useEffect(() => {
     if (email.length) {
@@ -276,23 +320,7 @@ const DashboardPage = () => {
   }, [debouncedApplication]);
 
   useEffect(() => {
-    if (email.length) {
-      lookupUser({ $or: [{ email }, { parent: email }] }, (response) => {
-        if (response.result && response.data.length) {
-          setUsers(
-            response.data.map((user) => ({
-              name: user.name,
-              email: user.email,
-            }))
-          );
-          if (response.data.length) {
-            setCurrentEmail(response.data[0].email);
-          }
-        } else {
-          router.push("/signin");
-        }
-      });
-    }
+    handleReloadUserInfo(email);
   }, [email]);
 
   useEffect(() => {
@@ -303,22 +331,24 @@ const DashboardPage = () => {
       router.push("/signin");
     }
 
-    // Table Width Observe
-    const observer = new ResizeObserver((entries) => {
-      for (let entry of entries) {
-        setTableWidth(entry.contentRect.width); // Update the width state
-      }
-    });
+    setTimeout(() => {
+      // Table Width Observe
+      const observer = new ResizeObserver((entries) => {
+        for (let entry of entries) {
+          setTableWidth(entry.contentRect.width); // Update the width state
+        }
+      });
 
-    if (tableContainerRef.current) {
-      observer.observe(tableContainerRef.current); // Observe the TableContainer
-    }
-
-    return () => {
       if (tableContainerRef.current) {
-        observer.unobserve(tableContainerRef.current); // Clean up the observer
+        observer.observe(tableContainerRef.current); // Observe the TableContainer
       }
-    };
+
+      return () => {
+        if (tableContainerRef.current) {
+          observer.unobserve(tableContainerRef.current); // Clean up the observer
+        }
+      };
+    }, 300);
   }, []);
 
   return (
@@ -345,11 +375,11 @@ const DashboardPage = () => {
                   <ComboSelector
                     fullWidth={false}
                     items={users.map((user) => ({
-                      value: user.email,
+                      value: user.userId,
                       label: user.name,
                     }))}
-                    value={currentEmail}
-                    onChange={(e) => setCurrentEmail(e.target.value)}
+                    value={currentUserId}
+                    onChange={(e) => setCurrentUserId(e.target.value)}
                   />
                 </TableCell>
                 <TableCell colSpan={1}>
@@ -606,7 +636,7 @@ const DashboardPage = () => {
                       size="small"
                       slotProps={{
                         select: {
-                          'aria-label': 'Rows per page',
+                          "aria-label": "Rows per page",
                         },
                         actions: {
                           showFirstButton: true,
@@ -617,7 +647,7 @@ const DashboardPage = () => {
                             nextPageIcon: ChevronRightRoundedIcon,
                             backPageIcon: ChevronLeftRoundedIcon,
                           },
-                        }
+                        },
                       }}
                     />
                   </TableCell>

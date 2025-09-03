@@ -1,57 +1,35 @@
 import React, { useEffect, useState } from "react";
-import Avatar from "@material-ui/core/Avatar";
-import Button from "@material-ui/core/Button";
-import CssBaseline from "@material-ui/core/CssBaseline";
-import TextField from "@material-ui/core/TextField";
-import FormControlLabel from "@material-ui/core/FormControlLabel";
-import Checkbox from "@material-ui/core/Checkbox";
-import Link from "@material-ui/core/Link";
-import Paper from "@material-ui/core/Paper";
-import Grid from "@material-ui/core/Grid";
-import LockOutlinedIcon from "@material-ui/icons/LockOutlined";
-import Typography from "@material-ui/core/Typography";
-import { makeStyles } from "@material-ui/core/styles";
-import { lookupUser, setCookie } from "@/actions";
-import { useRouter } from "next/router";
 
-const useStyles = makeStyles(theme => ({
-  root: {
-    height: "100vh"
-  },
-  image: {
-    backgroundImage: "url(https://source.unsplash.com/random)",
-    backgroundRepeat: "no-repeat",
-    backgroundSize: "cover",
-    backgroundPosition: "center"
-  },
-  paper: {
-    margin: theme.spacing(8, 4),
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center"
-  },
-  avatar: {
-    margin: theme.spacing(1),
-    backgroundColor: theme.palette.secondary.main
-  },
-  form: {
-    width: "100%", // Fix IE 11 issue.
-    marginTop: theme.spacing(1)
-  },
-  submit: {
-    margin: theme.spacing(3, 0, 2)
-  }
-}));
+import CssBaseline from "@mui/material/CssBaseline";
+import Typography from "@mui/material/Typography";
+import Avatar from "@mui/material/Avatar";
+import Button from "@mui/material/Button";
+import Checkbox from "@mui/material/Checkbox";
+import TextField from "@mui/material/TextField";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Link from "@mui/material/Link";
+
+import Container from "@mui/material/Container";
+import Paper from "@mui/material/Paper";
+import Grid from "@mui/material/Grid";
+
+import { createTheme, ThemeProvider } from "@mui/material/styles";
+
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+
+import { useRouter } from "next/router";
+import { lookupUser, setCookie } from "@/actions";
+
+const theme = createTheme();
 
 const SignInPage = () => {
-  const classes = useStyles();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState(false);
 
   const handleSignIn = () => {
-    lookupUser({email}, response => {
+    lookupUser({ email }, (response) => {
       if (response.result && response.data.length) {
         setCookie("jobseeker", response.data[0].email);
         router.push("/");
@@ -59,81 +37,95 @@ const SignInPage = () => {
         setEmailError(true);
         console.log(response);
       }
-    })
-  }
+    });
+  };
 
   useEffect(() => {
     setEmailError(false);
-  }, [email])
+  }, [email]);
 
   return (
-    <Grid container className={classes.root}>
-      <CssBaseline />
-      <Grid item xs={false} sm={4} md={7} className={classes.image} />
-      <Grid item xs={12} sm={8} md={5} component={Paper} elevation={6} square>
-        <div className={classes.paper}>
-          <Avatar className={classes.avatar}>
-            <LockOutlinedIcon />
-          </Avatar>
-          <Typography component="h1" variant="h5">
-            Sign in
-          </Typography>
-          <form className={classes.form} noValidate>
-            <TextField
-              variant="outlined"
-              margin="normal"
-              required
-              fullWidth
-              id="email"
-              label="Email Address"
-              name="email"
-              autoComplete="email"
-              autoFocus
-              value={email}
-              error={emailError}
-              onChange={e => setEmail(e.target.value)}
-            />
-            <TextField
-              variant="outlined"
-              margin="normal"
-              required
-              fullWidth
-              name="password"
-              label="Password"
-              type="password"
-              id="password"
-              autoComplete="current-password"
-            />
-            <FormControlLabel
-              control={<Checkbox value="remember" color="primary" />}
-              label="Remember me"
-            />
-            <Button
-              type="button"
-              fullWidth
-              variant="contained"
-              color="primary"
-              className={classes.submit}
-              onClick={handleSignIn}
-            >
-              Sign In
-            </Button>
-            <Grid container>
-              <Grid item xs>
-                <Link href="#" variant="body2">
-                  Forgot password?
-                </Link>
+    <ThemeProvider theme={theme}>
+      <Grid container height="100vh">
+        <CssBaseline />
+        {/* Left image section */}
+        <Grid
+          size={{ xs: 0, sm: 4, md: 7 }}
+          sx={{
+            backgroundImage: "url(https://source.unsplash.com/random)",
+            backgroundRepeat: "no-repeat",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        />
+        {/* Right form section */}
+        <Grid size={{ xs: 12, sm: 8, md: 5 }} component={Paper} elevation={6}>
+          <div
+            style={{
+              margin: "64px 32px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <Avatar sx={{ m: 1, bgcolor: "secondary.main" }}>
+              <LockOutlinedIcon />
+            </Avatar>
+            <Typography component="h1" variant="h5">
+              Sign in
+            </Typography>
+            <form noValidate style={{ width: "100%", marginTop: "8px" }}>
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                id="email"
+                label="Email Address"
+                name="email"
+                autoComplete="email"
+                autoFocus
+                value={email}
+                error={emailError}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                name="password"
+                label="Password"
+                type="password"
+                id="password"
+                autoComplete="current-password"
+              />
+              <FormControlLabel
+                control={<Checkbox value="remember" color="primary" />}
+                label="Remember me"
+              />
+              <Button
+                type="button"
+                fullWidth
+                variant="contained"
+                sx={{ mt: 3, mb: 2 }}
+                onClick={handleSignIn}
+              >
+                Sign In
+              </Button>
+              <Grid container justifyContent={"space-between"}>
+                <Grid item xs>
+                  <Link href="#">Forgot password?</Link>
+                </Grid>
+                <Grid item>
+                  <Link onClick={() => router.push("/signup")} href="#">
+                    {"Don't have an account? Sign Up"}
+                  </Link>
+                </Grid>
               </Grid>
-              <Grid item>
-                <Link onClick={() => router.push('/signup')} href="#" variant="body2">
-                  {"Don't have an account? Sign Up"}
-                </Link>
-              </Grid>
-            </Grid>
-          </form>
-        </div>
+            </form>
+          </div>
+        </Grid>
       </Grid>
-    </Grid>
+    </ThemeProvider>
   );
 };
 

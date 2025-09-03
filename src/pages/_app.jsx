@@ -6,7 +6,7 @@ const App = ({ Component, pageProps }) => {
   return (
     <>
       <Head>
-        <title>InterviewIO</title>
+        <title>JobSeeker</title>
       </Head>
       <Component {...pageProps} />
     </>

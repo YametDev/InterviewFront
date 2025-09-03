@@ -1,2 +1,2 @@
-# Interview
-Website where you can post and review interview questions and answers
+# JobSeeker
+Website where you can manage your applied applications and analyze them.

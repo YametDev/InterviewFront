@@ -4,7 +4,7 @@ export default function Document() {
   return (
     <Html>
       <Head>
-        <title>InterviewIO</title>
+        {/* <title>JobSeeker</title> */}
         <link rel="shortcut icon" href="/images/favicon.ico" />
       </Head>
       <body style={{ height: "100%", margin: "0px" }}>
