@@ -29,7 +29,7 @@ import {
   ComboSelector,
   InputBox,
   UploadButton,
-  StateSelector
+  StateSelector,
 } from "@/components";
 import {
   createApplication,
@@ -132,9 +132,12 @@ const DashboardPage = () => {
 
   const isApplicationOrigin = () => {
     return true;
-  }
+  };
 
-  const handleEscape = (str) => ({ $regex: str.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"), $options: "i"});
+  const handleEscape = (str) => ({
+    $regex: str.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"),
+    $options: "i",
+  });
 
   const handleReloadUserInfo = (email) => {
     if (email.length) {
@@ -393,9 +396,9 @@ const DashboardPage = () => {
                     padding: "2px !important",
                     minWidth: 80,
                     maxWidth: 80,
-                    width: 80,
                   }}
                 >
+                  {/* CheckAll checkbox */}
                   <Checkbox
                     size="small"
                     checked={states.length && states.every((state) => state)}
@@ -407,6 +410,7 @@ const DashboardPage = () => {
                       setStates(states.map(() => e.target.checked));
                     }}
                   ></Checkbox>
+                  {/* DeleteSelected button */}
                   <IconButton
                     color="error"
                     onClick={handleDelete}
@@ -492,7 +496,7 @@ const DashboardPage = () => {
                               date: e.target.value,
                             })
                           }
-                        />
+                        ></TextField>
                       </form>
                     ) : (
                       <InputBox
