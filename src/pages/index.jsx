@@ -60,16 +60,6 @@ function useDebounce(value, delay) {
   return debouncedValue;
 }
 
-const columns = [
-  "State",
-  "Date",
-  "Link",
-  "Company",
-  "Role",
-  "Salary",
-  "Resume",
-  "Description",
-];
 const useStyles = makeStyles((theme) => ({
   container: {
     display: "flex",
@@ -86,26 +76,6 @@ const DashboardPage = () => {
   const classes = useStyles();
   const router = useRouter();
 
-  const width = {
-    Link: "100px !important",
-    Date: "100px !important",
-    Company: "80px !important",
-    Role: "130px !important",
-    Salary: "80px !important",
-    State: "70px !important",
-    Resume: "90px !important",
-  };
-
-  const prep = {
-    date: "",
-    link: "",
-    company: "",
-    role: "",
-    salary: "",
-    description: "",
-    state: 0,
-  };
-
   const [loading, setLoading] = useState(false);
 
   const [count, setCount] = useState(0);
@@ -114,8 +84,6 @@ const DashboardPage = () => {
   const [rows, setRows] = useState([]);
   const [states, setStates] = useState([]);
 
-  const [application, setApplication] = useState(prep);
-  const debouncedApplication = useDebounce(application, 500);
   const [editApplication, setEditApplication] = useState({});
 
   const [editIndex, setEditIndex] = useState(0);
@@ -128,10 +96,183 @@ const DashboardPage = () => {
 
   const [upload, setUpload] = useState(undefined);
   const [tableWidth, setTableWidth] = useState(0);
+  const [descriptionWidth, setDescriptionWidth] = useState(200); // Initialize with default value
   const tableContainerRef = useRef(null);
 
+  // Dynamic columns configuration
+  const columns = [
+    {
+      property: "state",
+      display: "State",
+      width: 70,
+      default: 0,
+      visible: true,
+      editComponent: (value, onChange) => (
+        <StateSelector
+          value={value}
+          onChange={(newValue) => onChange(newValue)}
+        />
+      ),
+      dispComponent: (value, rowData, index) => (
+        <StateSelector
+          value={value}
+          onChange={(newValue) =>
+            handleUpdate(index, { ...rowData, state: newValue })
+          }
+        />
+      ),
+    },
+    {
+      property: "createdAt",
+      display: "Date",
+      width: 100,
+      default: "",
+      visible: true,
+      editComponent: (value, onChange) => (
+        <form className={classes.container} noValidate>
+          <TextField
+            type="date"
+            className={classes.textField}
+            variant="standard"
+            size="small"
+            value={value || ""}
+            sx={{
+              input: {
+                fontSize: "14px",
+              },
+            }}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        </form>
+      ),
+      dispComponent: (value) => <>{value}</>,
+    },
+    {
+      property: "link",
+      display: "Link",
+      width: 100,
+      default: "",
+      visible: true,
+      editComponent: (value, onChange) => (
+        <InputBox
+          value={value ?? ""}
+          onChange={(newValue) => onChange(newValue)}
+        />
+      ),
+      dispComponent: (value) => (
+        <a href={value} target="_blank" rel="noopener noreferrer">
+          {value}
+        </a>
+      ),
+    },
+    {
+      property: "company",
+      display: "Company",
+      width: 80,
+      default: "",
+      visible: true,
+      editComponent: (value, onChange) => (
+        <InputBox
+          value={value ?? ""}
+          onChange={(newValue) => onChange(newValue)}
+        />
+      ),
+      dispComponent: (value) => <b>{value}</b>,
+    },
+    {
+      property: "role",
+      display: "Role",
+      width: 130,
+      default: "",
+      visible: true,
+      editComponent: (value, onChange) => (
+        <InputBox
+          value={value ?? ""}
+          onChange={(newValue) => onChange(newValue)}
+        />
+      ),
+      dispComponent: (value) => <>{value}</>,
+    },
+    {
+      property: "salary",
+      display: "Salary",
+      width: 80,
+      default: "",
+      visible: true,
+      editComponent: (value, onChange) => (
+        <InputBox
+          value={value ?? ""}
+          onChange={(newValue) => onChange(newValue)}
+        />
+      ),
+      dispComponent: (value) => <b>{value}</b>,
+    },
+    {
+      property: "resume",
+      display: "Resume",
+      width: 90,
+      default: undefined,
+      visible: true,
+      editComponent: (upload, setUpload) => (
+        <UploadButton
+          onChange={(e) => setUpload(e.target.files[0])}
+          size="small"
+          sx={{ fontSize: "12px !important", py: 0, px: 1 }}
+          text={upload ? "Ready" : "Upload"}
+          color={upload ? "info" : "warning"}
+        />
+      ),
+      dispComponent: (value) =>
+        value && value.length ? (
+          <a target="_blank" href={value} rel="noopener noreferrer">
+            View Resume
+          </a>
+        ) : null,
+    },
+    {
+      property: "description",
+      display: "Description",
+      width: descriptionWidth,
+      default: "",
+      visible: true,
+      editComponent: (value, onChange) => (
+        <InputBox
+          multiline={true}
+          value={value ?? ""}
+          onChange={(newValue) => onChange(newValue)}
+        />
+      ),
+      dispComponent: (value) => (
+        <p
+          style={{
+            width: descriptionWidth,
+            overflow: "hidden",
+          }}
+        >
+          {value}
+        </p>
+      ),
+    },
+  ];
+
+  // Generate prep object dynamically from columns configuration
+  const prep = columns.reduce((acc, column) => {
+    if (column.default !== undefined) {
+      acc[column.property] = column.default;
+    }
+    return acc;
+  }, {});
+
+  const [application, setApplication] = useState(prep);
+  const debouncedApplication = useDebounce(application, 500);
+
   const isApplicationOrigin = () => {
-    return true;
+    return !columns.some(column => {
+      if (column.visible) {
+        return debouncedApplication[column.property] !== column.default;
+      }
+      return false;
+    });
   };
 
   const handleEscape = (str) => ({
@@ -169,15 +310,18 @@ const DashboardPage = () => {
     lookupApplication(
       {
         userId: currentUserId,
-        date: application.date.length === 0 ? "0000-00-00" : application.date,
-        offset: new Date().getTimezoneOffset(),
-        from: page * rowsPerPage,
-        count: rowsPerPage,
+        date:
+          application.createdAt.length === 0
+            ? "0000-00-00"
+            : application.createdAt,
         company: handleEscape(application.company),
         role: handleEscape(application.role),
         state: { $gt: application.state - 1 },
         link: handleEscape(application.link),
         description: handleEscape(application.description),
+        offset: new Date().getTimezoneOffset(),
+        from: page * rowsPerPage,
+        count: rowsPerPage,
       },
       (response) => {
         if (anim) {
@@ -325,6 +469,14 @@ const DashboardPage = () => {
   }, [email]);
 
   useEffect(() => {
+    const width = columns.reduce((sum, column) => {
+      if (column.property === "description") return sum;
+      return sum + column.width + 4;
+    }, 88);
+    setDescriptionWidth(tableWidth - width);
+  }, [tableWidth, columns.map((column) => column.visible)]);
+
+  useEffect(() => {
     const email = getCookie("jobseeker");
     if (email.length) {
       setEmail(email);
@@ -422,14 +574,14 @@ const DashboardPage = () => {
                 </TableCell>
                 {columns.map((column) => (
                   <TableCell
-                    key={column}
+                    key={column.property}
                     sx={{
-                      maxWidth: width[column],
-                      minWidth: width[column],
+                      maxWidth: column.width,
+                      minWidth: column.width,
                       padding: "2px !important",
                     }}
                   >
-                    {column}
+                    {column.display}
                   </TableCell>
                 ))}
               </TableRow>
@@ -441,7 +593,6 @@ const DashboardPage = () => {
                     textAlign: "center",
                     minWidth: 80,
                     maxWidth: 80,
-                    width: 80,
                   }}
                 >
                   <IconButton color="primary" onClick={handleAdd} size="small">
@@ -450,66 +601,24 @@ const DashboardPage = () => {
                 </TableCell>
                 {columns.map((column) => (
                   <TableCell
-                    key={column}
+                    key={column.property}
                     sx={{
                       verticalAlign: "bottom",
-                      maxWidth: width[column],
-                      minWidth: width[column],
-                      width: width[column],
+                      maxWidth: column.width,
+                      minWidth: column.width,
                       padding: "2px !important",
                     }}
                   >
-                    {column === "State" ? (
-                      <StateSelector
-                        value={application.state}
-                        onChange={(newValue) =>
-                          setApplication({
-                            ...application,
-                            state: newValue,
-                          })
-                        }
-                      ></StateSelector>
-                    ) : column === "Resume" ? (
-                      <UploadButton
-                        onChange={(e) => setUpload(e.target.files[0])}
-                        size="small"
-                        sx={{ fontSize: "12px !important", py: 0, px: 1 }}
-                        text={upload ? "Ready" : "Upload"}
-                        color={upload ? "info" : "warning"}
-                      />
-                    ) : column === "Date" ? (
-                      <form className={classes.container} noValidate>
-                        <TextField
-                          type="date"
-                          className={classes.textField}
-                          variant="standard"
-                          size="small"
-                          value={application.date}
-                          sx={{
-                            input: {
-                              fontSize: "14px",
-                            },
-                          }}
-                          onChange={(e) =>
+                    {column.property === "resume"
+                      ? column.editComponent(upload, setUpload)
+                      : column.editComponent(
+                          application[column.property],
+                          (newValue) =>
                             setApplication({
                               ...application,
-                              date: e.target.value,
+                              [column.property]: newValue,
                             })
-                          }
-                        ></TextField>
-                      </form>
-                    ) : (
-                      <InputBox
-                        multiline={column === "Description"}
-                        value={application[column.toLowerCase()] ?? ""}
-                        onChange={(newValue) =>
-                          setApplication({
-                            ...application,
-                            [column.toLowerCase()]: newValue,
-                          })
-                        }
-                      ></InputBox>
-                    )}
+                        )}
                   </TableCell>
                 ))}
               </TableRow>
@@ -523,7 +632,6 @@ const DashboardPage = () => {
                       sx={{
                         minWidth: 80,
                         maxWidth: 80,
-                        width: 80,
                         padding: "2px !important",
                         height: "40px !important",
                       }}
@@ -547,12 +655,11 @@ const DashboardPage = () => {
                     </TableCell>
                     {columns.map((column, index) => (
                       <TableCell
-                        key={column}
+                        key={column.property}
                         sx={{
                           padding: "2px !important",
-                          maxWidth: width[column],
-                          minWidth: width[column],
-                          width: width[column],
+                          maxWidth: column.width,
+                          minWidth: column.width,
                           maxHeight: "40px !important",
                           height: "40px !important",
                           fontSize: "12px !important",
@@ -560,41 +667,14 @@ const DashboardPage = () => {
                           whiteSpace: "nowrap",
                         }}
                         onClick={
-                          index < 2 || index === 6
+                          column.property === "state" ||
+                          column.property === "createdAt" ||
+                          column.property === "resume"
                             ? undefined
                             : () => handleOpenApplication(ind)
                         }
                       >
-                        {index < 1 ? (
-                          <StateSelector
-                            value={row[column.toLowerCase()]}
-                            onChange={(newValue) =>
-                              handleUpdate(ind, { ...row, state: newValue })
-                            }
-                          ></StateSelector>
-                        ) : column === "Date" ? (
-                          <>{row.createdAt}</>
-                        ) : column === "Link" ? (
-                          <a href={row.link}>{row.link}</a>
-                        ) : column === "Company" || column === "Salary" ? (
-                          <b>{row[column.toLowerCase()]}</b>
-                        ) : column === "Resume" ? (
-                          row.resume &&
-                          row.resume.length && (
-                            <a target="_blank" href={row.resume}>
-                              View Resume
-                            </a>
-                          )
-                        ) : (
-                          <p
-                            style={{
-                              width: tableWidth - 766,
-                              overflow: "hidden",
-                            }}
-                          >
-                            {row[column.toLowerCase()]}
-                          </p>
-                        )}
+                        {column.dispComponent(row[column.property], row, ind)}
                       </TableCell>
                     ))}
                   </TableRow>
@@ -665,6 +745,12 @@ const DashboardPage = () => {
         open={editMode}
         onClose={handleCloseApplication}
         onSave={handleSaveApplication}
+        editableColumns={columns.filter(
+          (col) =>
+            col.property !== "state" &&
+            col.property !== "date" &&
+            col.property !== "resume"
+        )}
       ></ApplicationEditer>
       <Dialog
         open={loading}

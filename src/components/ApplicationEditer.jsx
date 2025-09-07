@@ -6,8 +6,18 @@ import Dialog from "@mui/material/Dialog";
 import { InputBox } from "./InputBox";
 
 export const ApplicationEditer = (props) => {
-  const { onClose, open, onChange, application, onSave, ...other } = props;
-  const columns = ["Link", "Company", "Role", "Salary", "Description"];
+  const { onClose, open, onChange, application, onSave, editableColumns, ...other } = props;
+  
+  // Default editable columns if not provided
+  const defaultEditableColumns = [
+    { property: "link", display: "Link" },
+    { property: "company", display: "Company" },
+    { property: "role", display: "Role" },
+    { property: "salary", display: "Salary" },
+    { property: "description", display: "Description" }
+  ];
+  
+  const columns = editableColumns || defaultEditableColumns;
 
   const handleClose = () => {
     if (onClose) onClose();
@@ -23,21 +33,21 @@ export const ApplicationEditer = (props) => {
       <DialogTitle>Edit Application</DialogTitle>
       <DialogContent dividers>
         {columns.map((column) => (
-          <>
-            <p style={{ marginBottom: 2 }}><b>{column}</b></p>
+          <div key={column.property}>
+            <p style={{ marginBottom: 2 }}><b>{column.display}</b></p>
             <InputBox
-              value={application[column.toLowerCase()]}
+              value={application[column.property] || ""}
               onChange={(newValue) =>
                 onChange({
                   ...application,
-                  [column.toLowerCase()]: newValue,
+                  [column.property]: newValue,
                 })
               }
-              variant={column === "Description" ? "outlined" : "standard"}
-              multiline={column === "Description" ? true : false}
-              maxRows={column === "Description" ? 7 : 1}
-            ></InputBox>
-          </>
+              variant={column.property === "description" ? "outlined" : "standard"}
+              multiline={column.property === "description" ? true : false}
+              maxRows={column.property === "description" ? 7 : 1}
+            />
+          </div>
         ))}
       </DialogContent>
       <DialogActions>
