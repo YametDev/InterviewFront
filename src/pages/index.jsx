@@ -30,6 +30,7 @@ import {
   InputBox,
   UploadButton,
   StateSelector,
+  
 } from "@/components";
 import {
   createApplication,
@@ -107,6 +108,7 @@ const DashboardPage = () => {
       width: 70,
       default: 0,
       visible: true,
+      filter: (value) => ({ state: { $gt: value - 1 } }),
       editComponent: (value, onChange) => (
         <StateSelector
           value={value}
@@ -128,6 +130,7 @@ const DashboardPage = () => {
       width: 100,
       default: "",
       visible: true,
+      filter: (value) => ({ date: value.length === 0 ? "0000-00-00" : value }),
       editComponent: (value, onChange) => (
         <form className={classes.container} noValidate>
           <TextField
@@ -153,6 +156,7 @@ const DashboardPage = () => {
       width: 100,
       default: "",
       visible: true,
+      filter: (value) => value && value.length > 0 ? { link: handleEscape(value) } : {},
       editComponent: (value, onChange) => (
         <InputBox
           value={value ?? ""}
@@ -171,6 +175,7 @@ const DashboardPage = () => {
       width: 80,
       default: "",
       visible: true,
+      filter: (value) => value && value.length > 0 ? { company: handleEscape(value) } : {},
       editComponent: (value, onChange) => (
         <InputBox
           value={value ?? ""}
@@ -185,6 +190,7 @@ const DashboardPage = () => {
       width: 130,
       default: "",
       visible: true,
+      filter: (value) => value && value.length > 0 ? { role: handleEscape(value) } : {},
       editComponent: (value, onChange) => (
         <InputBox
           value={value ?? ""}
@@ -199,6 +205,7 @@ const DashboardPage = () => {
       width: 80,
       default: "",
       visible: true,
+      filter: (value) => value && value.length > 0 ? { salary: handleEscape(value) } : {},
       editComponent: (value, onChange) => (
         <InputBox
           value={value ?? ""}
@@ -213,6 +220,7 @@ const DashboardPage = () => {
       width: 90,
       default: undefined,
       visible: true,
+      // No filter function for resume as it's not used in filtering
       editComponent: (upload, setUpload) => (
         <UploadButton
           onChange={(e) => setUpload(e.target.files[0])}
@@ -235,6 +243,7 @@ const DashboardPage = () => {
       width: descriptionWidth,
       default: "",
       visible: true,
+      filter: (value) => value && value.length > 0 ? { description: handleEscape(value) } : {},
       editComponent: (value, onChange) => (
         <InputBox
           multiline={true}
@@ -275,6 +284,25 @@ const DashboardPage = () => {
     });
   };
 
+  const buildFilterObject = () => {
+    const dynamicFilters = columns.reduce((filters, column) => {
+      if (column.visible && column.filter && application[column.property] !== undefined) {
+        const columnFilter = column.filter(application[column.property]);
+        return { ...filters, ...columnFilter };
+      }
+      return filters;
+    }, {});
+
+    // Add required metadata
+    return {
+      ...dynamicFilters,
+      userId: currentUserId,
+      offset: new Date().getTimezoneOffset(),
+      from: page * rowsPerPage,
+      count: rowsPerPage,
+    };
+  };
+
   const handleEscape = (str) => ({
     $regex: str.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"),
     $options: "i",
@@ -307,30 +335,17 @@ const DashboardPage = () => {
     if (anim) {
       setLoading(true);
     }
+    
     lookupApplication(
-      {
-        userId: currentUserId,
-        date:
-          application.createdAt.length === 0
-            ? "0000-00-00"
-            : application.createdAt,
-        company: handleEscape(application.company),
-        role: handleEscape(application.role),
-        state: { $gt: application.state - 1 },
-        link: handleEscape(application.link),
-        description: handleEscape(application.description),
-        offset: new Date().getTimezoneOffset(),
-        from: page * rowsPerPage,
-        count: rowsPerPage,
-      },
+      buildFilterObject(),
       (response) => {
         if (anim) {
           setLoading(false);
         }
         if (response.result && Array.isArray(response.data)) {
-          setRows(response.data);
-          setStates(response.data.map(() => false));
           setCount(response.count);
+          setStates(response.data.map(() => false));
+          setRows(response.data);
         }
       }
     );
