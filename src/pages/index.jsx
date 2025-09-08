@@ -90,7 +90,6 @@ const DashboardPage = () => {
   const [editIndex, setEditIndex] = useState(0);
   const [editMode, setEditMode] = useState(false);
 
-  const [currentUserId, setCurrentUserId] = useState(0);
   const [user, setUser] = useState({});
   const [users, setUsers] = useState([]);
 
@@ -105,9 +104,8 @@ const DashboardPage = () => {
       property: "userId",
       display: "Seeker",
       width: 130,
-      default: user.userId ?? 0,
       visible: true,
-      filter: (userId) => ({userId}),
+      filter: (userId) => ({ userId }),
       editComponent: (value, onChange) => (
         <SeekerSelector
           value={value}
@@ -295,11 +293,11 @@ const DashboardPage = () => {
     return acc;
   }, {});
 
-  const [application, setApplication] = useState(prep);
+  const [application, setApplication] = useState({ ...prep, userId: 0 });
   const debouncedApplication = useDebounce(application, 500);
 
   const isApplicationOrigin = () => {
-    return !columns.some(column => {
+    return !columns.some((column) => {
       if (column.visible) {
         return debouncedApplication[column.property] !== column.default;
       }
@@ -309,7 +307,11 @@ const DashboardPage = () => {
 
   const buildFilterObject = () => {
     const dynamicFilters = columns.reduce((filters, column) => {
-      if (column.visible && column.filter && application[column.property] !== undefined) {
+      if (
+        column.visible &&
+        column.filter &&
+        application[column.property] !== undefined
+      ) {
         const columnFilter = column.filter(application[column.property]);
         return { ...filters, ...columnFilter };
       }
@@ -319,22 +321,19 @@ const DashboardPage = () => {
     // Add required metadata
     return {
       ...dynamicFilters,
-      userId: currentUserId,
       offset: new Date().getTimezoneOffset(),
       from: page * rowsPerPage,
       count: rowsPerPage,
     };
   };
 
-  const buildDefaultObject = () => {
-    const defaultObject = columns.reduce((filters, column) => {
-      if (column.visible && column.filter && application[column.property] !== undefined) {
-        const columnFilter = column.filter(application[column.property]);
-        return { ...filters, ...columnFilter };
+  const buildUpdateObject = app => {
+    columns.reduce((acc, column) => {
+      if (column.editable && app[column.property] !== undefined) {
+        acc[column.property] = app[column.property];
       }
-      return filters;
+      return acc;
     }, {});
-    return defaultObject;
   }
 
   const handleEscape = (str) => ({
@@ -346,11 +345,9 @@ const DashboardPage = () => {
     if (email.length) {
       lookupUser({ $or: [{ email }, { parent: email }] }, (response) => {
         if (response.result && response.data.length) {
+          let currentUser = {};
           const newUserData = response.data.map((user) => {
-            if (user.email === email) {
-              setUser(user);
-              console.log(user);
-            }
+            if (user.email === email) currentUser = user;
             return {
               name: user.name,
               email: user.email,
@@ -358,6 +355,7 @@ const DashboardPage = () => {
             };
           });
           setUsers(newUserData);
+          setUser(currentUser);
         } else {
           router.push("/signin");
         }
@@ -369,22 +367,19 @@ const DashboardPage = () => {
     if (anim) {
       setLoading(true);
     }
-    
+
     const filterObject = buildFilterObject();
-    
-    lookupApplication(
-      filterObject,
-      (response) => {
-        if (anim) {
-          setLoading(false);
-        }
-        if (response.result && Array.isArray(response.data)) {
-          setRows(response.data);
-          setStates(response.data.map(() => false));
-          setCount(response.count);
-        }
+
+    lookupApplication(filterObject, (response) => {
+      if (anim) {
+        setLoading(false);
       }
-    );
+      if (response.result && Array.isArray(response.data)) {
+        setRows(response.data);
+        setStates(response.data.map(() => false));
+        setCount(response.count);
+      }
+    });
   };
 
   const handleChangePage = (event, newPage) => {
@@ -413,16 +408,13 @@ const DashboardPage = () => {
   const handleAdd = async () => {
     setLoading(true);
     const resume = await handleUploadResume();
-    createApplication(
-      { resume, ...application },
-      (response) => {
-        setLoading(false);
-        if (response.result) {
-          setApplication({ ...prep });
-          setUpload(undefined);
-        }
+    createApplication({ resume, ...application }, (response) => {
+      setLoading(false);
+      if (response.result) {
+        setApplication({ ...prep });
+        setUpload(undefined);
       }
-    );
+    });
   };
 
   const handleDelete = () => {
@@ -454,6 +446,7 @@ const DashboardPage = () => {
 
   const handleUpdate = (index, newValue) => {
     setLoading(true);
+    console.log(newValue);
     updateApplication(
       {
         id: newValue._id,
@@ -503,14 +496,6 @@ const DashboardPage = () => {
     }
   }, [page, rowsPerPage]);
 
-  // Seeker switch
-  useEffect(() => {
-    if (application.userId) {
-      setPage(0);
-      handleReload(true);
-    }
-  }, [application.userId]);
-
   // Application chnaged
   useEffect(() => {
     if (user != {}) {
@@ -558,7 +543,7 @@ const DashboardPage = () => {
 
   return (
     <Paper sx={{ height: "100%" }}>
-      {(user != {}) && (
+      {user != {} && (
         <TableContainer
           ref={tableContainerRef}
           sx={{
@@ -576,16 +561,8 @@ const DashboardPage = () => {
             >
               {/* ====================== Email Selection ======================= */}
               <TableRow>
-                <TableCell colSpan={8}>
-                  <ComboSelector
-                    fullWidth={false}
-                    items={users.map((user) => ({
-                      value: user.userId,
-                      label: user.name,
-                    }))}
-                    value={currentUserId}
-                    onChange={(e) => setCurrentUserId(e.target.value)}
-                  />
+                <TableCell colSpan={6}>
+                  {`${user.email}`}
                 </TableCell>
                 <TableCell colSpan={1}>
                   <Button onClick={handleLogout} color="error">
@@ -721,7 +698,8 @@ const DashboardPage = () => {
                         onClick={
                           column.property === "state" ||
                           column.property === "createdAt" ||
-                          column.property === "resume"
+                          column.property === "resume" ||
+                          column.property === "userId"
                             ? undefined
                             : () => handleOpenApplication(ind)
                         }
