@@ -2,7 +2,7 @@ import { ComboSelector } from "./ComboSelector";
 
 export const StateSelector = (props) => {
   const { value, onChange } = props;
-  const states = ["Applied", "Recruiter", "HR M", "Tech", "Culture", "Hired"];
+  const states = ["Applied", "Failed", "Recruiter", "HR M", "Tech", "Culture", "Hired"];
 
   const handleChange = (event) => {
     if (onChange) onChange(event.target.value);

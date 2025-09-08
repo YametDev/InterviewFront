@@ -437,7 +437,6 @@ const DashboardPage = () => {
         },
       },
       (response) => {
-        setLoading(false);
         handleReload();
       }
     );
@@ -448,29 +447,20 @@ const DashboardPage = () => {
     setStates([]);
     setRows([]);
     deleteApplication({ id: rows[ind].id }, (response) => {
-      setLoading(false);
       handleReload();
     });
   };
 
   const handleUpdate = (index, newValue) => {
     setLoading(true);
-    console.log(newValue);
-
     const updateObject = buildUpdateObject(newValue);
-
     updateApplication(
       {
         id: newValue._id,
         update: updateObject,
       },
       (response) => {
-        setLoading(false);
-        if (response.result) {
-          let newRows = [...rows];
-          newRows[index] = newValue;
-          setRows([...newRows]);
-        }
+        handleReload(true);
       }
     );
   };
@@ -505,6 +495,7 @@ const DashboardPage = () => {
   // Application chnaged
   useEffect(() => {
     if (user != {}) {
+      setPage(0);
       handleReload();
     }
   }, [debouncedApplication]);
