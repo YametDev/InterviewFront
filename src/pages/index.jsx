@@ -16,6 +16,14 @@ import {
   CircularProgress,
   Button,
   TextField,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControlLabel,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -23,6 +31,9 @@ import FirstPageRoundedIcon from "@mui/icons-material/FirstPageRounded";
 import LastPageRoundedIcon from "@mui/icons-material/LastPageRounded";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import EditIcon from "@mui/icons-material/Edit";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 
 import {
   ApplicationEditer,
@@ -98,8 +109,11 @@ const DashboardPage = () => {
   const [descriptionWidth, setDescriptionWidth] = useState(200); // Initialize with default value
   const tableContainerRef = useRef(null);
 
-  // Dynamic columns configuration
-  const columns = [
+  // Column visibility management
+  const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState(null);
+
+  const buildColumnsData = () => ([
     {
       property: "userId",
       display: "Seeker",
@@ -292,7 +306,10 @@ const DashboardPage = () => {
         </p>
       ),
     },
-  ];
+  ]);
+
+  // Dynamic columns configuration
+  const [columns, setColumns] = useState(buildColumnsData());
 
   // Generate prep object dynamically from columns configuration
   const prep = columns.reduce((acc, column) => {
@@ -363,8 +380,9 @@ const DashboardPage = () => {
               userId: user.userId,
             };
           });
-          setUsers(newUserData);
           setUser(currentUser);
+          setApplication({...application, userId: currentUser.userId});
+          setUsers(newUserData);
         } else {
           router.push("/signin");
         }
@@ -485,6 +503,47 @@ const DashboardPage = () => {
     router.push("/signin");
   };
 
+  // Column visibility handlers
+  const handleOpenColumnSettings = () => {
+    setColumnSettingsOpen(true);
+  };
+
+  const handleCloseColumnSettings = () => {
+    setColumnSettingsOpen(false);
+  };
+
+  const handleToggleColumnVisibility = (property) => {
+    // Prevent toggling visibility for required columns
+    const requiredColumns = ['userId', 'company', 'role', 'description'];
+    if (requiredColumns.includes(property)) {
+      return;
+    }
+    
+    setColumns(prevColumns => 
+      prevColumns.map(col => 
+        col.property === property 
+          ? { ...col, visible: !col.visible }
+          : col
+      )
+    );
+  };
+
+  const handleContextMenu = (event) => {
+    event.preventDefault();
+    setContextMenu(
+      contextMenu === null
+        ? {
+            mouseX: event.clientX + 2,
+            mouseY: event.clientY - 6,
+          }
+        : null,
+    );
+  };
+
+  const handleCloseContextMenu = () => {
+    setContextMenu(null);
+  };
+
   // Next or prev page, rows changed
   useEffect(() => {
     if (application.userId !== 0) {
@@ -503,11 +562,15 @@ const DashboardPage = () => {
   // Window resized
   useEffect(() => {
     const width = columns.reduce((sum, column) => {
-      if (column.property === "description") return sum;
+      if (column.property === "description" || !column.visible) return sum;
       return sum + column.width + 4;
     }, 88);
     setDescriptionWidth(tableWidth - width);
-  }, [tableWidth, columns.map((column) => column.visible)]);
+  }, [tableWidth, columns]);
+
+  useEffect(() => {
+    setColumns(buildColumnsData());
+  }, [users])
 
   // First load
   useEffect(() => {
@@ -566,12 +629,13 @@ const DashboardPage = () => {
                 </TableCell>
               </TableRow>
               {/* ====================== Table Header ======================= */}
-              <TableRow>
+              <TableRow onContextMenu={handleContextMenu}>
                 <TableCell
                   sx={{
                     padding: "2px !important",
                     minWidth: 80,
                     maxWidth: 80,
+                    width: 80,
                   }}
                 >
                   {/* CheckAll checkbox */}
@@ -596,7 +660,7 @@ const DashboardPage = () => {
                     <DeleteIcon />
                   </IconButton>
                 </TableCell>
-                {columns.map((column) => (
+                {columns.filter(column => column.visible).map((column) => (
                   <TableCell
                     key={column.property}
                     sx={{
@@ -622,8 +686,15 @@ const DashboardPage = () => {
                   <IconButton color="primary" onClick={handleAdd} size="small">
                     <AddIcon />
                   </IconButton>
+                  <IconButton 
+                    onClick={handleOpenColumnSettings} 
+                    color="primary"
+                    size="small"
+                  >
+                    <EditIcon />
+                  </IconButton>
                 </TableCell>
-                {columns.map((column) => (
+                {columns.filter(column => column.visible).map((column) => (
                   <TableCell
                     key={column.property}
                     sx={{
@@ -677,7 +748,7 @@ const DashboardPage = () => {
                         <DeleteIcon />
                       </IconButton>
                     </TableCell>
-                    {columns.map((column, index) => (
+                    {columns.filter(column => column.visible).map((column, index) => (
                       <TableCell
                         key={column.property}
                         sx={{
@@ -709,7 +780,7 @@ const DashboardPage = () => {
               {/* ======================== No Content ========================= */}
               {rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={columns.length + 1}>
+                  <TableCell colSpan={columns.filter(col => col.visible).length + 1}>
                     No data available.
                   </TableCell>
                 </TableRow>
@@ -787,6 +858,75 @@ const DashboardPage = () => {
       >
         <CircularProgress />
       </Dialog>
+
+      {/* Column Settings Dialog */}
+      <Dialog open={columnSettingsOpen} onClose={handleCloseColumnSettings}>
+        <DialogTitle>Column Visibility Settings</DialogTitle>
+        <DialogContent>
+          {columns.map((column) => {
+            const requiredColumns = ['userId', 'company', 'role', 'description'];
+            const isRequired = requiredColumns.includes(column.property);
+            
+            return (
+              <FormControlLabel
+                key={column.property}
+                control={
+                  <Checkbox
+                    checked={column.visible}
+                    onChange={() => handleToggleColumnVisibility(column.property)}
+                    disabled={isRequired}
+                  />
+                }
+                label={column.display + (isRequired ? ' (Required)' : '')}
+                sx={isRequired ? { opacity: 0.6 } : {}}
+              />
+            );
+          })}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseColumnSettings}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Right-click Context Menu */}
+      <Menu
+        open={contextMenu !== null}
+        onClose={handleCloseContextMenu}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          contextMenu !== null
+            ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+            : undefined
+        }
+      >
+        {columns.map((column) => {
+          const requiredColumns = ['userId', 'company', 'role', 'description'];
+          const isRequired = requiredColumns.includes(column.property);
+          
+          return (
+            <MenuItem
+              key={column.property}
+              onClick={() => {
+                handleToggleColumnVisibility(column.property);
+                handleCloseContextMenu();
+              }}
+              disabled={isRequired}
+              sx={isRequired ? { opacity: 0.6 } : {}}
+            >
+              <ListItemIcon>
+                {column.visible ? (
+                  <VisibilityIcon fontSize="small" />
+                ) : (
+                  <VisibilityOffIcon fontSize="small" />
+                )}
+              </ListItemIcon>
+              <ListItemText 
+                primary={column.display + (isRequired ? ' (Required)' : '')} 
+              />
+            </MenuItem>
+          );
+        })}
+      </Menu>
     </Paper>
   );
 };
