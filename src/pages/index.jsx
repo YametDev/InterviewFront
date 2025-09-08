@@ -105,6 +105,7 @@ const DashboardPage = () => {
       display: "Seeker",
       width: 130,
       visible: true,
+      editable: true,
       filter: (userId) => ({ userId }),
       editComponent: (value, onChange) => (
         <SeekerSelector
@@ -129,6 +130,7 @@ const DashboardPage = () => {
       width: 70,
       default: 0,
       visible: true,
+      editable: true,
       filter: (value) => ({ state: { $gt: value - 1 } }),
       editComponent: (value, onChange) => (
         <StateSelector
@@ -151,6 +153,7 @@ const DashboardPage = () => {
       width: 100,
       default: "",
       visible: true,
+      editable: false,
       filter: (value) => ({ date: value.length === 0 ? "0000-00-00" : value }),
       editComponent: (value, onChange) => (
         <form className={classes.container} noValidate>
@@ -177,6 +180,7 @@ const DashboardPage = () => {
       width: 100,
       default: "",
       visible: true,
+      editable: true,
       filter: (link) => ({ link: handleEscape(link) }),
       editComponent: (value, onChange) => (
         <InputBox
@@ -196,6 +200,7 @@ const DashboardPage = () => {
       width: 80,
       default: "",
       visible: true,
+      editable: true,
       filter: (value) => ({ company: handleEscape(value) }),
       editComponent: (value, onChange) => (
         <InputBox
@@ -211,6 +216,7 @@ const DashboardPage = () => {
       width: 130,
       default: "",
       visible: true,
+      editable: true,
       filter: (value) => ({ role: handleEscape(value) }),
       editComponent: (value, onChange) => (
         <InputBox
@@ -226,6 +232,7 @@ const DashboardPage = () => {
       width: 80,
       default: "",
       visible: true,
+      editable: true,
       filter: (value) => ({ salary: handleEscape(value) }),
       editComponent: (value, onChange) => (
         <InputBox
@@ -241,6 +248,7 @@ const DashboardPage = () => {
       width: 90,
       default: undefined,
       visible: true,
+      editable: true,
       // No filter function for resume as it's not used in filtering
       editComponent: (upload, setUpload) => (
         <UploadButton
@@ -264,6 +272,7 @@ const DashboardPage = () => {
       width: descriptionWidth,
       default: "",
       visible: true,
+      editable: true,
       filter: (value) => ({ description: handleEscape(value) }),
       editComponent: (value, onChange) => (
         <InputBox
@@ -327,14 +336,14 @@ const DashboardPage = () => {
     };
   };
 
-  const buildUpdateObject = app => {
-    columns.reduce((acc, column) => {
+  const buildUpdateObject = (app) => {
+    return columns.reduce((acc, column) => {
       if (column.editable && app[column.property] !== undefined) {
         acc[column.property] = app[column.property];
       }
       return acc;
     }, {});
-  }
+  };
 
   const handleEscape = (str) => ({
     $regex: str.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"),
@@ -411,7 +420,7 @@ const DashboardPage = () => {
     createApplication({ resume, ...application }, (response) => {
       setLoading(false);
       if (response.result) {
-        setApplication({ ...prep });
+        setApplication({...application, ...prep });
         setUpload(undefined);
       }
     });
@@ -447,16 +456,13 @@ const DashboardPage = () => {
   const handleUpdate = (index, newValue) => {
     setLoading(true);
     console.log(newValue);
+
+    const updateObject = buildUpdateObject(newValue);
+
     updateApplication(
       {
         id: newValue._id,
-        update: {
-          link: newValue.link,
-          company: newValue.company,
-          role: newValue.role,
-          salary: newValue.salary,
-          description: newValue.description,
-        },
+        update: updateObject,
       },
       (response) => {
         setLoading(false);
@@ -561,9 +567,7 @@ const DashboardPage = () => {
             >
               {/* ====================== Email Selection ======================= */}
               <TableRow>
-                <TableCell colSpan={6}>
-                  {`${user.email}`}
-                </TableCell>
+                <TableCell colSpan={6}>{`${user.email}`}</TableCell>
                 <TableCell colSpan={1}>
                   <Button onClick={handleLogout} color="error">
                     Logout
@@ -775,12 +779,7 @@ const DashboardPage = () => {
         open={editMode}
         onClose={handleCloseApplication}
         onSave={handleSaveApplication}
-        editableColumns={columns.filter(
-          (col) =>
-            col.property !== "state" &&
-            col.property !== "date" &&
-            col.property !== "resume"
-        )}
+        editableColumns={columns.filter((col) => col.editable)}
       ></ApplicationEditer>
       <Dialog
         open={loading}
