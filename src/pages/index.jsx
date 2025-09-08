@@ -113,7 +113,7 @@ const DashboardPage = () => {
   const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState(null);
 
-  const buildColumnsData = () => ([
+  const buildColumnsData = () => [
     {
       property: "userId",
       display: "Seeker",
@@ -315,7 +315,7 @@ const DashboardPage = () => {
         </p>
       ),
     },
-  ]);
+  ];
 
   // Dynamic columns configuration
   const [columns, setColumns] = useState(buildColumnsData());
@@ -330,24 +330,39 @@ const DashboardPage = () => {
 
   const [application, setApplication] = useState({ ...prep, userId: 0 });
   const debouncedApplication = useDebounce(application, 500);
+  
+  // Ref to always have access to the latest application state
+  const applicationRef = useRef(application);
+  
+  // Update ref whenever application changes
+  useEffect(() => {
+    applicationRef.current = application;
+  }, [application]);
 
-  const isApplicationOrigin = () => {
+  const isApplicationOrigin = (application) => {
     return !columns.some((column) => {
-      if (column.visible) {
-        return debouncedApplication[column.property] !== column.default;
+      if (column.visible && column.default !== undefined) {
+        return application[column.property] !== column.default;
       }
       return false;
     });
   };
 
-  const buildFilterObject = () => {
-    const dynamicFilters = columns.reduce((filters, column) => {
+  const buildFilterObject = (application) => {
+    let flag = false;
+    let dynamicFilters = columns.reduce((filters, column) => {
       if (
         column.visible &&
         column.filter &&
         application[column.property] !== undefined
       ) {
         const columnFilter = column.filter(application[column.property]);
+        if (
+          column.default !== undefined &&
+          application[column.property] != column.default
+        ) {
+          flag = true;
+        }
         return { ...filters, ...columnFilter };
       }
       return filters;
@@ -356,6 +371,9 @@ const DashboardPage = () => {
     // Add required metadata
     return {
       ...dynamicFilters,
+      userId: isApplicationOrigin(application)
+        ? dynamicFilters.userId
+        : { $in: users.map((user) => user.userId) },
       offset: new Date().getTimezoneOffset(),
       from: page * rowsPerPage,
       count: rowsPerPage,
@@ -390,7 +408,7 @@ const DashboardPage = () => {
             };
           });
           setUser(currentUser);
-          setApplication({...application, userId: currentUser.userId});
+          setApplication({ ...application, userId: currentUser.userId });
           setUsers(newUserData);
         } else {
           router.push("/signin");
@@ -399,12 +417,13 @@ const DashboardPage = () => {
     }
   };
 
-  const handleReload = (anim = false) => {
+  const handleReload = (application, anim = false) => {
     if (anim) {
       setLoading(true);
     }
 
-    const filterObject = buildFilterObject();
+    const filterObject = buildFilterObject(application);
+    console.log(filterObject);
 
     lookupApplication(filterObject, (response) => {
       if (anim) {
@@ -444,12 +463,17 @@ const DashboardPage = () => {
   const handleAdd = async () => {
     setLoading(true);
     const resume = await handleUploadResume();
-    createApplication({ resume, ...application }, (response) => {
-      setLoading(false);
-      if (response.result) {
-        setApplication({...application, ...prep });
-        setUpload(undefined);
-      }
+    
+    // Get current application state at the time of execution
+    setApplication(currentApplication => {
+      createApplication({ resume, ...currentApplication }, (response) => {
+        setLoading(false);
+        if (response.result) {
+          setApplication(prevApp => ({ ...prevApp, ...prep }));
+          setUpload(undefined);
+        }
+      });
+      return currentApplication; // Return unchanged state
     });
   };
 
@@ -464,7 +488,10 @@ const DashboardPage = () => {
         },
       },
       (response) => {
-        handleReload();
+        setApplication(currentApplication => {
+          handleReload(currentApplication);
+          return currentApplication;
+        });
       }
     );
   };
@@ -474,7 +501,10 @@ const DashboardPage = () => {
     setStates([]);
     setRows([]);
     deleteApplication({ id: rows[ind].id }, (response) => {
-      handleReload();
+      setApplication(currentApplication => {
+        handleReload(currentApplication);
+        return currentApplication;
+      });
     });
   };
 
@@ -487,7 +517,11 @@ const DashboardPage = () => {
         update: updateObject,
       },
       (response) => {
-        handleReload(true);
+        setApplication(currentApplication => {
+          handleReload(currentApplication, true);
+          return currentApplication;
+        });
+        setLoading(false);
       }
     );
   };
@@ -523,16 +557,14 @@ const DashboardPage = () => {
 
   const handleToggleColumnVisibility = (property) => {
     // Prevent toggling visibility for required columns
-    const requiredColumns = ['userId', 'company', 'role', 'description'];
+    const requiredColumns = ["userId", "company", "role", "description"];
     if (requiredColumns.includes(property)) {
       return;
     }
-    
-    setColumns(prevColumns => 
-      prevColumns.map(col => 
-        col.property === property 
-          ? { ...col, visible: !col.visible }
-          : col
+
+    setColumns((prevColumns) =>
+      prevColumns.map((col) =>
+        col.property === property ? { ...col, visible: !col.visible } : col
       )
     );
   };
@@ -546,7 +578,7 @@ const DashboardPage = () => {
             mouseX: event.clientX + 2,
             mouseY: event.clientY - 6,
           }
-        : null,
+        : null
     );
   };
 
@@ -557,7 +589,7 @@ const DashboardPage = () => {
   // Next or prev page, rows changed
   useEffect(() => {
     if (application.userId !== 0) {
-      handleReload(true);
+      handleReload(debouncedApplication, true);
     }
   }, [page, rowsPerPage]);
 
@@ -565,7 +597,7 @@ const DashboardPage = () => {
   useEffect(() => {
     if (user != {}) {
       setPage(0);
-      handleReload();
+      handleReload(debouncedApplication);
     }
   }, [debouncedApplication]);
 
@@ -580,23 +612,16 @@ const DashboardPage = () => {
 
   useEffect(() => {
     setColumns(buildColumnsData());
-  }, [users])
+  }, [users]);
 
-  // Disable browser's default right-click context menu globally
+  // First load
   useEffect(() => {
     const handleGlobalContextMenu = (e) => {
       e.preventDefault();
     };
 
-    document.addEventListener('contextmenu', handleGlobalContextMenu);
+    document.addEventListener("contextmenu", handleGlobalContextMenu);
 
-    return () => {
-      document.removeEventListener('contextmenu', handleGlobalContextMenu);
-    };
-  }, []);
-
-  // First load
-  useEffect(() => {
     const storedEmail = getCookie("jobseeker");
     if (storedEmail.length) {
       handleReloadUserInfo(storedEmail);
@@ -622,6 +647,10 @@ const DashboardPage = () => {
         }
       };
     }, 300);
+
+    return () => {
+      document.removeEventListener("contextmenu", handleGlobalContextMenu);
+    };
   }, []);
 
   return (
@@ -644,7 +673,9 @@ const DashboardPage = () => {
             >
               {/* ====================== Email Selection ======================= */}
               <TableRow>
-                <TableCell colSpan={6}>{`${user.email} : ${user.name}`}</TableCell>
+                <TableCell
+                  colSpan={6}
+                >{`${user.email} : ${user.name}`}</TableCell>
                 <TableCell colSpan={1}>
                   <Button onClick={handleLogout} color="error">
                     Logout
@@ -683,18 +714,20 @@ const DashboardPage = () => {
                     <DeleteIcon />
                   </IconButton>
                 </TableCell>
-                {columns.filter(column => column.visible).map((column) => (
-                  <TableCell
-                    key={column.property}
-                    sx={{
-                      maxWidth: column.width,
-                      minWidth: column.width,
-                      padding: "2px !important",
-                    }}
-                  >
-                    {column.display}
-                  </TableCell>
-                ))}
+                {columns
+                  .filter((column) => column.visible)
+                  .map((column) => (
+                    <TableCell
+                      key={column.property}
+                      sx={{
+                        maxWidth: column.width,
+                        minWidth: column.width,
+                        padding: "2px !important",
+                      }}
+                    >
+                      {column.display}
+                    </TableCell>
+                  ))}
               </TableRow>
               {/* ======================  Append Bar  ======================= */}
               <TableRow>
@@ -709,36 +742,38 @@ const DashboardPage = () => {
                   <IconButton color="primary" onClick={handleAdd} size="small">
                     <AddIcon />
                   </IconButton>
-                  <IconButton 
-                    onClick={handleOpenColumnSettings} 
+                  <IconButton
+                    onClick={handleOpenColumnSettings}
                     color="primary"
                     size="small"
                   >
                     <EditIcon />
                   </IconButton>
                 </TableCell>
-                {columns.filter(column => column.visible).map((column) => (
-                  <TableCell
-                    key={column.property}
-                    sx={{
-                      verticalAlign: "bottom",
-                      maxWidth: column.width,
-                      minWidth: column.width,
-                      padding: "2px !important",
-                    }}
-                  >
-                    {column.property === "resume"
-                      ? column.editComponent(upload, setUpload)
-                      : column.editComponent(
-                          application[column.property],
-                          (newValue) =>
-                            setApplication({
-                              ...application,
-                              [column.property]: newValue,
-                            })
-                        )}
-                  </TableCell>
-                ))}
+                {columns
+                  .filter((column) => column.visible)
+                  .map((column) => (
+                    <TableCell
+                      key={column.property}
+                      sx={{
+                        verticalAlign: "bottom",
+                        maxWidth: column.width,
+                        minWidth: column.width,
+                        padding: "2px !important",
+                      }}
+                    >
+                      {column.property === "resume"
+                        ? column.editComponent(upload, setUpload)
+                        : column.editComponent(
+                            application[column.property],
+                            (newValue) =>
+                              setApplication({
+                                ...application,
+                                [column.property]: newValue,
+                              })
+                          )}
+                    </TableCell>
+                  ))}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -771,24 +806,30 @@ const DashboardPage = () => {
                         <DeleteIcon />
                       </IconButton>
                     </TableCell>
-                    {columns.filter(column => column.visible).map((column, index) => (
-                      <TableCell
-                        key={column.property}
-                        sx={{
-                          padding: "2px !important",
-                          maxWidth: column.width,
-                          minWidth: column.width,
-                          maxHeight: "40px !important",
-                          height: "40px !important",
-                          fontSize: "12px !important",
-                          overflow: "hidden",
-                          whiteSpace: "nowrap",
-                        }}
-                        onClick={column.clickable ? () => handleOpenApplication(ind) : undefined}
-                      >
-                        {column.dispComponent(row[column.property], row, ind)}
-                      </TableCell>
-                    ))}
+                    {columns
+                      .filter((column) => column.visible)
+                      .map((column, index) => (
+                        <TableCell
+                          key={column.property}
+                          sx={{
+                            padding: "2px !important",
+                            maxWidth: column.width,
+                            minWidth: column.width,
+                            maxHeight: "40px !important",
+                            height: "40px !important",
+                            fontSize: "12px !important",
+                            overflow: "hidden",
+                            whiteSpace: "nowrap",
+                          }}
+                          onClick={
+                            column.clickable
+                              ? () => handleOpenApplication(ind)
+                              : undefined
+                          }
+                        >
+                          {column.dispComponent(row[column.property], row, ind)}
+                        </TableCell>
+                      ))}
                   </TableRow>
                 );
               })}
@@ -796,7 +837,9 @@ const DashboardPage = () => {
               {/* ======================== No Content ========================= */}
               {rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={columns.filter(col => col.visible).length + 1}>
+                  <TableCell
+                    colSpan={columns.filter((col) => col.visible).length + 1}
+                  >
                     No data available.
                   </TableCell>
                 </TableRow>
@@ -880,20 +923,27 @@ const DashboardPage = () => {
         <DialogTitle>Column Visibility Settings</DialogTitle>
         <DialogContent>
           {columns.map((column) => {
-            const requiredColumns = ['userId', 'company', 'role', 'description'];
+            const requiredColumns = [
+              "userId",
+              "company",
+              "role",
+              "description",
+            ];
             const isRequired = requiredColumns.includes(column.property);
-            
+
             return (
               <FormControlLabel
                 key={column.property}
                 control={
                   <Checkbox
                     checked={column.visible}
-                    onChange={() => handleToggleColumnVisibility(column.property)}
+                    onChange={() =>
+                      handleToggleColumnVisibility(column.property)
+                    }
                     disabled={isRequired}
                   />
                 }
-                label={column.display + (isRequired ? ' (Required)' : '')}
+                label={column.display + (isRequired ? " (Required)" : "")}
                 sx={isRequired ? { opacity: 0.6 } : {}}
               />
             );
@@ -916,9 +966,9 @@ const DashboardPage = () => {
         }
       >
         {columns.map((column) => {
-          const requiredColumns = ['userId', 'company', 'role', 'description'];
+          const requiredColumns = ["userId", "company", "role", "description"];
           const isRequired = requiredColumns.includes(column.property);
-          
+
           return (
             <MenuItem
               key={column.property}
@@ -936,8 +986,8 @@ const DashboardPage = () => {
                   <VisibilityOffIcon fontSize="small" />
                 )}
               </ListItemIcon>
-              <ListItemText 
-                primary={column.display + (isRequired ? ' (Required)' : '')} 
+              <ListItemText
+                primary={column.display + (isRequired ? " (Required)" : "")}
               />
             </MenuItem>
           );
