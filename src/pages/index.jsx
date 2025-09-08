@@ -120,6 +120,7 @@ const DashboardPage = () => {
       width: 130,
       visible: true,
       editable: true,
+      clickable: false,
       filter: (userId) => ({ userId }),
       editComponent: (value, onChange) => (
         <SeekerSelector
@@ -145,6 +146,7 @@ const DashboardPage = () => {
       default: 0,
       visible: true,
       editable: true,
+      clickable: false,
       filter: (value) => ({ state: { $gt: value - 1 } }),
       editComponent: (value, onChange) => (
         <StateSelector
@@ -168,6 +170,7 @@ const DashboardPage = () => {
       default: "",
       visible: true,
       editable: false,
+      clickable: true,
       filter: (value) => ({ date: value.length === 0 ? "0000-00-00" : value }),
       editComponent: (value, onChange) => (
         <form className={classes.container} noValidate>
@@ -195,6 +198,7 @@ const DashboardPage = () => {
       default: "",
       visible: true,
       editable: true,
+      clickable: false,
       filter: (link) => ({ link: handleEscape(link) }),
       editComponent: (value, onChange) => (
         <InputBox
@@ -215,6 +219,7 @@ const DashboardPage = () => {
       default: "",
       visible: true,
       editable: true,
+      clickable: true,
       filter: (value) => ({ company: handleEscape(value) }),
       editComponent: (value, onChange) => (
         <InputBox
@@ -231,6 +236,7 @@ const DashboardPage = () => {
       default: "",
       visible: true,
       editable: true,
+      clickable: true,
       filter: (value) => ({ role: handleEscape(value) }),
       editComponent: (value, onChange) => (
         <InputBox
@@ -247,6 +253,7 @@ const DashboardPage = () => {
       default: "",
       visible: true,
       editable: true,
+      clickable: true,
       filter: (value) => ({ salary: handleEscape(value) }),
       editComponent: (value, onChange) => (
         <InputBox
@@ -263,6 +270,7 @@ const DashboardPage = () => {
       default: undefined,
       visible: true,
       editable: true,
+      clickable: false,
       // No filter function for resume as it's not used in filtering
       editComponent: (upload, setUpload) => (
         <UploadButton
@@ -287,6 +295,7 @@ const DashboardPage = () => {
       default: "",
       visible: true,
       editable: true,
+      clickable: true,
       filter: (value) => ({ description: handleEscape(value) }),
       editComponent: (value, onChange) => (
         <InputBox
@@ -529,7 +538,8 @@ const DashboardPage = () => {
   };
 
   const handleContextMenu = (event) => {
-    event.preventDefault();
+    event.preventDefault(); // Prevent browser's default context menu
+    event.stopPropagation(); // Stop event from bubbling up
     setContextMenu(
       contextMenu === null
         ? {
@@ -571,6 +581,19 @@ const DashboardPage = () => {
   useEffect(() => {
     setColumns(buildColumnsData());
   }, [users])
+
+  // Disable browser's default right-click context menu globally
+  useEffect(() => {
+    const handleGlobalContextMenu = (e) => {
+      e.preventDefault();
+    };
+
+    document.addEventListener('contextmenu', handleGlobalContextMenu);
+
+    return () => {
+      document.removeEventListener('contextmenu', handleGlobalContextMenu);
+    };
+  }, []);
 
   // First load
   useEffect(() => {
@@ -761,14 +784,7 @@ const DashboardPage = () => {
                           overflow: "hidden",
                           whiteSpace: "nowrap",
                         }}
-                        onClick={
-                          column.property === "state" ||
-                          column.property === "createdAt" ||
-                          column.property === "resume" ||
-                          column.property === "userId"
-                            ? undefined
-                            : () => handleOpenApplication(ind)
-                        }
+                        onClick={column.clickable ? () => handleOpenApplication(ind) : undefined}
                       >
                         {column.dispComponent(row[column.property], row, ind)}
                       </TableCell>
