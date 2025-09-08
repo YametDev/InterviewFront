@@ -621,7 +621,7 @@ const DashboardPage = () => {
             >
               {/* ====================== Email Selection ======================= */}
               <TableRow>
-                <TableCell colSpan={6}>{`${user.email}`}</TableCell>
+                <TableCell colSpan={6}>{`${user.email} : ${user.name}`}</TableCell>
                 <TableCell colSpan={1}>
                   <Button onClick={handleLogout} color="error">
                     Logout
