@@ -30,7 +30,7 @@ import {
   InputBox,
   UploadButton,
   StateSelector,
-  
+  SeekerSelector,
 } from "@/components";
 import {
   createApplication,
@@ -90,9 +90,8 @@ const DashboardPage = () => {
   const [editIndex, setEditIndex] = useState(0);
   const [editMode, setEditMode] = useState(false);
 
-  const [email, setEmail] = useState("");
-  const [userId, setUserId] = useState(0);
   const [currentUserId, setCurrentUserId] = useState(0);
+  const [user, setUser] = useState({});
   const [users, setUsers] = useState([]);
 
   const [upload, setUpload] = useState(undefined);
@@ -102,6 +101,30 @@ const DashboardPage = () => {
 
   // Dynamic columns configuration
   const columns = [
+    {
+      property: "userId",
+      display: "Seeker",
+      width: 130,
+      default: user.userId ?? 0,
+      visible: true,
+      filter: (userId) => ({userId}),
+      editComponent: (value, onChange) => (
+        <SeekerSelector
+          value={value}
+          onChange={(newValue) => onChange(newValue)}
+          items={users}
+        />
+      ),
+      dispComponent: (value, rowData, index) => (
+        <SeekerSelector
+          value={value}
+          onChange={(newValue) =>
+            handleUpdate(index, { ...rowData, userId: newValue })
+          }
+          items={users}
+        />
+      ),
+    },
     {
       property: "state",
       display: "State",
@@ -156,7 +179,7 @@ const DashboardPage = () => {
       width: 100,
       default: "",
       visible: true,
-      filter: (value) => value && value.length > 0 ? { link: handleEscape(value) } : {},
+      filter: (link) => ({ link: handleEscape(link) }),
       editComponent: (value, onChange) => (
         <InputBox
           value={value ?? ""}
@@ -175,7 +198,7 @@ const DashboardPage = () => {
       width: 80,
       default: "",
       visible: true,
-      filter: (value) => value && value.length > 0 ? { company: handleEscape(value) } : {},
+      filter: (value) => ({ company: handleEscape(value) }),
       editComponent: (value, onChange) => (
         <InputBox
           value={value ?? ""}
@@ -190,7 +213,7 @@ const DashboardPage = () => {
       width: 130,
       default: "",
       visible: true,
-      filter: (value) => value && value.length > 0 ? { role: handleEscape(value) } : {},
+      filter: (value) => ({ role: handleEscape(value) }),
       editComponent: (value, onChange) => (
         <InputBox
           value={value ?? ""}
@@ -205,7 +228,7 @@ const DashboardPage = () => {
       width: 80,
       default: "",
       visible: true,
-      filter: (value) => value && value.length > 0 ? { salary: handleEscape(value) } : {},
+      filter: (value) => ({ salary: handleEscape(value) }),
       editComponent: (value, onChange) => (
         <InputBox
           value={value ?? ""}
@@ -243,7 +266,7 @@ const DashboardPage = () => {
       width: descriptionWidth,
       default: "",
       visible: true,
-      filter: (value) => value && value.length > 0 ? { description: handleEscape(value) } : {},
+      filter: (value) => ({ description: handleEscape(value) }),
       editComponent: (value, onChange) => (
         <InputBox
           multiline={true}
@@ -303,6 +326,17 @@ const DashboardPage = () => {
     };
   };
 
+  const buildDefaultObject = () => {
+    const defaultObject = columns.reduce((filters, column) => {
+      if (column.visible && column.filter && application[column.property] !== undefined) {
+        const columnFilter = column.filter(application[column.property]);
+        return { ...filters, ...columnFilter };
+      }
+      return filters;
+    }, {});
+    return defaultObject;
+  }
+
   const handleEscape = (str) => ({
     $regex: str.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"),
     $options: "i",
@@ -314,7 +348,8 @@ const DashboardPage = () => {
         if (response.result && response.data.length) {
           const newUserData = response.data.map((user) => {
             if (user.email === email) {
-              setUserId(user.userId);
+              setUser(user);
+              console.log(user);
             }
             return {
               name: user.name,
@@ -323,7 +358,6 @@ const DashboardPage = () => {
             };
           });
           setUsers(newUserData);
-          setCurrentUserId(newUserData[0].userId);
         } else {
           router.push("/signin");
         }
@@ -336,16 +370,18 @@ const DashboardPage = () => {
       setLoading(true);
     }
     
+    const filterObject = buildFilterObject();
+    
     lookupApplication(
-      buildFilterObject(),
+      filterObject,
       (response) => {
         if (anim) {
           setLoading(false);
         }
         if (response.result && Array.isArray(response.data)) {
-          setCount(response.count);
-          setStates(response.data.map(() => false));
           setRows(response.data);
+          setStates(response.data.map(() => false));
+          setCount(response.count);
         }
       }
     );
@@ -378,7 +414,7 @@ const DashboardPage = () => {
     setLoading(true);
     const resume = await handleUploadResume();
     createApplication(
-      { userId: currentUserId, resume, ...application },
+      { resume, ...application },
       (response) => {
         setLoading(false);
         if (response.result) {
@@ -460,29 +496,29 @@ const DashboardPage = () => {
     router.push("/signin");
   };
 
+  // Next or prev page, rows changed
   useEffect(() => {
-    if (currentUserId) {
+    if (application.userId !== 0) {
       handleReload(true);
     }
   }, [page, rowsPerPage]);
 
+  // Seeker switch
   useEffect(() => {
-    if (currentUserId) {
+    if (application.userId) {
       setPage(0);
       handleReload(true);
     }
-  }, [currentUserId]);
+  }, [application.userId]);
 
+  // Application chnaged
   useEffect(() => {
-    if (email.length) {
+    if (user != {}) {
       handleReload();
     }
   }, [debouncedApplication]);
 
-  useEffect(() => {
-    handleReloadUserInfo(email);
-  }, [email]);
-
+  // Window resized
   useEffect(() => {
     const width = columns.reduce((sum, column) => {
       if (column.property === "description") return sum;
@@ -491,10 +527,11 @@ const DashboardPage = () => {
     setDescriptionWidth(tableWidth - width);
   }, [tableWidth, columns.map((column) => column.visible)]);
 
+  // First load
   useEffect(() => {
-    const email = getCookie("jobseeker");
-    if (email.length) {
-      setEmail(email);
+    const storedEmail = getCookie("jobseeker");
+    if (storedEmail.length) {
+      handleReloadUserInfo(storedEmail);
     } else {
       router.push("/signin");
     }
@@ -521,7 +558,7 @@ const DashboardPage = () => {
 
   return (
     <Paper sx={{ height: "100%" }}>
-      {email.length !== 0 && (
+      {(user != {}) && (
         <TableContainer
           ref={tableContainerRef}
           sx={{
