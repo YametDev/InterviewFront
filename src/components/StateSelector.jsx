@@ -1,7 +1,7 @@
 import { ComboSelector } from "./ComboSelector";
 
 export const StateSelector = (props) => {
-  const { value, onChange } = props;
+  const { value, onChange, ...others } = props;
   const states = ["Applied", "Failed", "Recruiter", "HR M", "Tech", "Culture", "Hired"];
 
   const handleChange = (event) => {
@@ -13,6 +13,7 @@ export const StateSelector = (props) => {
       items={states.map((state, index) => ({ value: index, label: state }))}
       value={value}
       onChange={handleChange}
+      {...others}
     />
   );
 };

@@ -127,6 +127,7 @@ const DashboardPage = () => {
           value={value}
           onChange={(newValue) => onChange(newValue)}
           items={users}
+          width={130}
         />
       ),
       dispComponent: (value, rowData, index) => (
@@ -136,6 +137,7 @@ const DashboardPage = () => {
             handleUpdate(index, { ...rowData, userId: newValue })
           }
           items={users}
+          width={130}
         />
       ),
     },
@@ -152,6 +154,7 @@ const DashboardPage = () => {
         <StateSelector
           value={value}
           onChange={(newValue) => onChange(newValue)}
+          width={70}
         />
       ),
       dispComponent: (value, rowData, index) => (
@@ -160,6 +163,7 @@ const DashboardPage = () => {
           onChange={(newValue) =>
             handleUpdate(index, { ...rowData, state: newValue })
           }
+          width={70}
         />
       ),
     },
@@ -173,7 +177,7 @@ const DashboardPage = () => {
       clickable: true,
       filter: (value) => ({ date: value.length === 0 ? "0000-00-00" : value }),
       editComponent: (value, onChange) => (
-        <form className={classes.container} noValidate>
+        <form className={classes.container} style={{width: "100px !important"}}>
           <TextField
             type="date"
             className={classes.textField}
@@ -251,7 +255,7 @@ const DashboardPage = () => {
       display: "Salary",
       width: 80,
       default: "",
-      visible: true,
+      visible: false,
       editable: true,
       clickable: true,
       filter: (value) => ({ salary: handleEscape(value) }),
@@ -267,8 +271,7 @@ const DashboardPage = () => {
       property: "resume",
       display: "Resume",
       width: 90,
-      default: undefined,
-      visible: true,
+      visible: false,
       editable: true,
       clickable: false,
       // No filter function for resume as it's not used in filtering
@@ -307,7 +310,7 @@ const DashboardPage = () => {
       dispComponent: (value) => (
         <p
           style={{
-            width: descriptionWidth,
+            width: "100%",
             overflow: "hidden",
           }}
         >
@@ -423,7 +426,6 @@ const DashboardPage = () => {
     }
 
     const filterObject = buildFilterObject(application);
-    console.log(filterObject);
 
     lookupApplication(filterObject, (response) => {
       if (anim) {
@@ -455,7 +457,6 @@ const DashboardPage = () => {
       const response = await uploadResume(formData);
       return response.data.webViewLink;
     } catch (error) {
-      console.log(error);
       return "";
     }
   };
@@ -608,7 +609,11 @@ const DashboardPage = () => {
       return sum + column.width + 4;
     }, 88);
     setDescriptionWidth(tableWidth - width);
-  }, [tableWidth, columns]);
+  }, [tableWidth, columns.filter(c => c.property !== "description").map(c => c.width)]);
+
+  useEffect(() => {
+    console.log(descriptionWidth);
+  }, [descriptionWidth])
 
   useEffect(() => {
     setColumns(buildColumnsData());
@@ -673,14 +678,14 @@ const DashboardPage = () => {
             >
               {/* ====================== Email Selection ======================= */}
               <TableRow>
-                <TableCell
-                  colSpan={6}
-                >{`${user.email} : ${user.name}`}</TableCell>
-                <TableCell colSpan={1}>
+                <TableCell colSpan={2}>
                   <Button onClick={handleLogout} color="error">
                     Logout
                   </Button>
                 </TableCell>
+                <TableCell
+                  colSpan={columns.filter(c => c.visible).length - 1}
+                >{`${user.email} : ${user.name}`}</TableCell>
               </TableRow>
               {/* ====================== Table Header ======================= */}
               <TableRow onContextMenu={handleContextMenu}>
@@ -720,8 +725,9 @@ const DashboardPage = () => {
                     <TableCell
                       key={column.property}
                       sx={{
-                        maxWidth: column.width,
-                        minWidth: column.width,
+                        maxWidth: column.property === "description" ? descriptionWidth : column.width,
+                        minWidth: column.property === "description" ? descriptionWidth : column.width,
+                        width: column.property === "description" ? descriptionWidth : column.width,
                         padding: "2px !important",
                       }}
                     >
@@ -737,17 +743,18 @@ const DashboardPage = () => {
                     textAlign: "center",
                     minWidth: 80,
                     maxWidth: 80,
+                    width: 80,
                   }}
                 >
-                  <IconButton color="primary" onClick={handleAdd} size="small">
-                    <AddIcon />
-                  </IconButton>
                   <IconButton
                     onClick={handleOpenColumnSettings}
                     color="primary"
                     size="small"
                   >
                     <EditIcon />
+                  </IconButton>
+                  <IconButton color="primary" onClick={handleAdd} size="small">
+                    <AddIcon />
                   </IconButton>
                 </TableCell>
                 {columns
@@ -757,8 +764,9 @@ const DashboardPage = () => {
                       key={column.property}
                       sx={{
                         verticalAlign: "bottom",
-                        maxWidth: column.width,
-                        minWidth: column.width,
+                        maxWidth: column.property === "description" ? descriptionWidth : column.width,
+                        minWidth: column.property === "description" ? descriptionWidth : column.width,
+                        width: column.property === "description" ? descriptionWidth : column.width,
                         padding: "2px !important",
                       }}
                     >
@@ -785,6 +793,7 @@ const DashboardPage = () => {
                       sx={{
                         minWidth: 80,
                         maxWidth: 80,
+                        width: 80,
                         padding: "2px !important",
                         height: "40px !important",
                       }}
@@ -815,6 +824,7 @@ const DashboardPage = () => {
                             padding: "2px !important",
                             maxWidth: column.width,
                             minWidth: column.width,
+                            width: column.width,
                             maxHeight: "40px !important",
                             height: "40px !important",
                             fontSize: "12px !important",
