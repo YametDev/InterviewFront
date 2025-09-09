@@ -308,7 +308,8 @@ const DashboardPage = () => {
       visible: true,
       editable: true,
       clickable: true,
-      filter: (skills) => ({ skills: { $all: skills } }),
+      // Empty selection should not filter anything
+      filter: (skills) => (Array.isArray(skills) && skills.length > 0 ? { skills: { $all: skills } } : {}),
       // filter omitted for now or implement contains-any
       editComponent: (value = [], onChange) => (
         <Autocomplete
@@ -482,13 +483,6 @@ const DashboardPage = () => {
         application[column.property] !== undefined
       ) {
         const columnFilter = column.filter(application[column.property]);
-        if (column.property === "skills") {
-          // if skills selected, filter apps that contain all selected skills ids
-          if ((application.skills || []).length) {
-            return { ...filters, skills: { $all: application.skills } };
-          }
-          return filters;
-        }
         if (
           column.default !== undefined &&
           application[column.property] != column.default
@@ -596,6 +590,7 @@ const DashboardPage = () => {
 
     // Get current application state at the time of execution
     setApplication((currentApplication) => {
+      console.log(currentApplication);
       createApplication({ resume, ...currentApplication }, (response) => {
         setLoading(false);
         if (response.result) {
