@@ -40,11 +40,11 @@ import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 
 import {
   ApplicationEditer,
-  ComboSelector,
   InputBox,
   UploadButton,
   StateSelector,
   SeekerSelector,
+  SkillsTooltip,
 } from "@/components";
 import {
   createApplication,
@@ -327,7 +327,13 @@ const DashboardPage = () => {
                 (s) => s.name.toLowerCase() === input.toLowerCase()
               );
               if (exact) {
-                onChange([...new Set(selected.map(s => typeof s === "string" ? exact.sid : s.sid))]);
+                onChange([
+                  ...new Set(
+                    selected.map((s) =>
+                      typeof s === "string" ? exact.sid : s.sid
+                    )
+                  ),
+                ]);
               } else {
                 console.log(input);
                 createSkill({ name: input }, (resp) => {
@@ -338,11 +344,14 @@ const DashboardPage = () => {
                     };
                     setSkills((prev) => {
                       // avoid duplicates
-                      if (prev.some((p) => p.sid === created.sid))
-                        return prev;
+                      if (prev.some((p) => p.sid === created.sid)) return prev;
                       return [...prev, created];
                     });
-                    onChange(selected.map(s => typeof s === "string" ? created.sid : s.sid));
+                    onChange(
+                      selected.map((s) =>
+                        typeof s === "string" ? created.sid : s.sid
+                      )
+                    );
                   }
                 });
               }
@@ -350,16 +359,20 @@ const DashboardPage = () => {
               onChange(selected.map((s) => s.sid));
             }
           }}
-          renderTags={(selected, getTagProps) =>
-            selected.map((option, index) => (
-              <Chip
-                key={option.sid}
-                label={option.name}
-                size="small"
-                {...getTagProps({ index })}
-              />
-            ))
-          }
+          renderTags={(selected, getTagProps) => {
+            if (!selected.length) return null;
+            const [first, ...rest] = selected;
+            return (
+              <>
+                <Chip key={first.sid} label={first.name} size="small" />
+                {rest.length > 0 && (
+                  <SkillsTooltip items={rest} placement="top">
+                    <Chip key="more" label={`+${rest.length}`} size="small" />
+                  </SkillsTooltip>
+                )}
+              </>
+            );
+          }}
           renderInput={(params) => (
             <TextField
               {...params}
@@ -369,16 +382,30 @@ const DashboardPage = () => {
           )}
         />
       ),
-      dispComponent: (value = []) => (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-          {value
-            .map((sid) => skills.find((s) => s.sid === sid))
-            .filter(Boolean)
-            .map((s) => (
-              <Chip key={s.sid} label={s.name} size="small" />
-            ))}
-        </Box>
-      ),
+      dispComponent: (value = []) => {
+        const selected = value
+          .map((sid) => skills.find((s) => s.sid === sid))
+          .filter(Boolean);
+        if (!selected.length) return null;
+        const [first, ...rest] = selected;
+        return (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              overflow: "hidden",
+            }}
+          >
+            <Chip key={first.sid} label={first.name} size="small" />
+            {rest.length > 0 && (
+              <SkillsTooltip items={rest} placement="top">
+                <Chip key="more" label={`+${rest.length}`} size="small" />
+              </SkillsTooltip>
+            )}
+          </Box>
+        );
+      },
     },
     {
       property: "description",
