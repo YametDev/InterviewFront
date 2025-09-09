@@ -106,7 +106,7 @@ const DashboardPage = () => {
 
   const [upload, setUpload] = useState(undefined);
   const [tableWidth, setTableWidth] = useState(0);
-  const [descriptionWidth, setDescriptionWidth] = useState(200); // Initialize with default value
+  const [flexibleWidth, setFlexibleWidth] = useState(200);
   const tableContainerRef = useRef(null);
 
   // Column visibility management
@@ -177,7 +177,10 @@ const DashboardPage = () => {
       clickable: true,
       filter: (value) => ({ date: value.length === 0 ? "0000-00-00" : value }),
       editComponent: (value, onChange) => (
-        <form className={classes.container} style={{width: "100px !important"}}>
+        <form
+          className={classes.container}
+          style={{ width: "100px !important" }}
+        >
           <TextField
             type="date"
             className={classes.textField}
@@ -294,7 +297,7 @@ const DashboardPage = () => {
     {
       property: "description",
       display: "Description",
-      width: descriptionWidth,
+      width: 0,
       default: "",
       visible: true,
       editable: true,
@@ -333,10 +336,10 @@ const DashboardPage = () => {
 
   const [application, setApplication] = useState({ ...prep, userId: 0 });
   const debouncedApplication = useDebounce(application, 500);
-  
+
   // Ref to always have access to the latest application state
   const applicationRef = useRef(application);
-  
+
   // Update ref whenever application changes
   useEffect(() => {
     applicationRef.current = application;
@@ -464,13 +467,13 @@ const DashboardPage = () => {
   const handleAdd = async () => {
     setLoading(true);
     const resume = await handleUploadResume();
-    
+
     // Get current application state at the time of execution
-    setApplication(currentApplication => {
+    setApplication((currentApplication) => {
       createApplication({ resume, ...currentApplication }, (response) => {
         setLoading(false);
         if (response.result) {
-          setApplication(prevApp => ({ ...prevApp, ...prep }));
+          setApplication((prevApp) => ({ ...prevApp, ...prep }));
           setUpload(undefined);
         }
       });
@@ -489,7 +492,7 @@ const DashboardPage = () => {
         },
       },
       (response) => {
-        setApplication(currentApplication => {
+        setApplication((currentApplication) => {
           handleReload(currentApplication);
           return currentApplication;
         });
@@ -502,7 +505,7 @@ const DashboardPage = () => {
     setStates([]);
     setRows([]);
     deleteApplication({ id: rows[ind].id }, (response) => {
-      setApplication(currentApplication => {
+      setApplication((currentApplication) => {
         handleReload(currentApplication);
         return currentApplication;
       });
@@ -518,7 +521,7 @@ const DashboardPage = () => {
         update: updateObject,
       },
       (response) => {
-        setApplication(currentApplication => {
+        setApplication((currentApplication) => {
           handleReload(currentApplication, true);
           return currentApplication;
         });
@@ -604,16 +607,16 @@ const DashboardPage = () => {
 
   // Window resized
   useEffect(() => {
+    let flexibleCount = 0;
     const width = columns.reduce((sum, column) => {
-      if (column.property === "description" || !column.visible) return sum;
+      if (!column.width || !column.visible) {
+        if (!column.width && column.visible) flexibleCount++;
+        return sum;
+      }
       return sum + column.width + 4;
     }, 88);
-    setDescriptionWidth(tableWidth - width);
-  }, [tableWidth, columns.filter(c => c.property !== "description").map(c => c.width)]);
-
-  useEffect(() => {
-    console.log(descriptionWidth);
-  }, [descriptionWidth])
+    setFlexibleWidth((tableWidth - width) / flexibleCount);
+  }, [tableWidth, columns.filter((c) => c.visible).map((c) => c.visible)]);
 
   useEffect(() => {
     setColumns(buildColumnsData());
@@ -684,7 +687,7 @@ const DashboardPage = () => {
                   </Button>
                 </TableCell>
                 <TableCell
-                  colSpan={columns.filter(c => c.visible).length - 1}
+                  colSpan={columns.filter((c) => c.visible).length - 1}
                 >{`${user.email} : ${user.name}`}</TableCell>
               </TableRow>
               {/* ====================== Table Header ======================= */}
@@ -725,9 +728,18 @@ const DashboardPage = () => {
                     <TableCell
                       key={column.property}
                       sx={{
-                        maxWidth: column.property === "description" ? descriptionWidth : column.width,
-                        minWidth: column.property === "description" ? descriptionWidth : column.width,
-                        width: column.property === "description" ? descriptionWidth : column.width,
+                        maxWidth:
+                          column.property === "description"
+                            ? flexibleWidth
+                            : column.width,
+                        minWidth:
+                          column.property === "description"
+                            ? flexibleWidth
+                            : column.width,
+                        width:
+                          column.property === "description"
+                            ? flexibleWidth
+                            : column.width,
                         padding: "2px !important",
                       }}
                     >
@@ -764,9 +776,18 @@ const DashboardPage = () => {
                       key={column.property}
                       sx={{
                         verticalAlign: "bottom",
-                        maxWidth: column.property === "description" ? descriptionWidth : column.width,
-                        minWidth: column.property === "description" ? descriptionWidth : column.width,
-                        width: column.property === "description" ? descriptionWidth : column.width,
+                        maxWidth:
+                          column.property === "description"
+                            ? flexibleWidth
+                            : column.width,
+                        minWidth:
+                          column.property === "description"
+                            ? flexibleWidth
+                            : column.width,
+                        width:
+                          column.property === "description"
+                            ? flexibleWidth
+                            : column.width,
                         padding: "2px !important",
                       }}
                     >
