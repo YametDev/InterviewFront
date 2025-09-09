@@ -16,6 +16,7 @@ const applicationSchema = new mongoose.Schema(
     resume: { type: String, default: "" },
     state: { type: Number, default: 0 },
     pin: { type: Boolean, default: false },
+    skills: { type: [Number], default: [] },
   },
   { timestamps: true }
 );

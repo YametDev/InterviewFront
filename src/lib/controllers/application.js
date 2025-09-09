@@ -29,6 +29,7 @@ export const lookup = async (req, res) => {
     role: req.body?.role,
     state: req.body?.state,
     description: req.body?.description,
+    skills: req.body?.skills,
   };
   if (!(req.body.date.length === 0 || req.body.date === "0000-00-00")) {
     find = { ...find, createdAt: { $gte: startOfDayUTC, $lte: endOfDayUTC } };

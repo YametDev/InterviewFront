@@ -24,6 +24,9 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
+  Box,
+  Chip,
+  Autocomplete,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -53,6 +56,8 @@ import {
   setCookie,
   updateApplication,
   uploadResume,
+  lookupSkill,
+  createSkill,
 } from "@/actions";
 import { makeStyles } from "@mui/styles";
 
@@ -103,6 +108,7 @@ const DashboardPage = () => {
 
   const [user, setUser] = useState({});
   const [users, setUsers] = useState([]);
+  const [skills, setSkills] = useState([]); // [{ sid, name }]
 
   const [upload, setUpload] = useState(undefined);
   const [tableWidth, setTableWidth] = useState(0);
@@ -295,6 +301,86 @@ const DashboardPage = () => {
         ) : null,
     },
     {
+      property: "skills",
+      display: "Skills",
+      width: 0,
+      default: [],
+      visible: true,
+      editable: true,
+      clickable: true,
+      filter: (skills) => ({ skills: { $all: skills } }),
+      // filter omitted for now or implement contains-any
+      editComponent: (value = [], onChange) => (
+        <Autocomplete
+          multiple
+          freeSolo
+          options={skills}
+          getOptionLabel={(opt) => (typeof opt === "string" ? opt : opt.name)}
+          value={value
+            .map((sid) => skills.find((s) => s.sid === sid))
+            .filter(Boolean)}
+          onChange={async (_, selected) => {
+            const last = selected.at(-1);
+            if (typeof last === "string") {
+              const input = last.trim();
+              const exact = skills.find(
+                (s) => s.name.toLowerCase() === input.toLowerCase()
+              );
+              if (exact) {
+                onChange([...new Set(selected.map(s => typeof s === "string" ? exact.sid : s.sid))]);
+              } else {
+                console.log(input);
+                createSkill({ name: input }, (resp) => {
+                  if (resp.result && resp.data) {
+                    const created = {
+                      sid: resp.data.sid,
+                      name: resp.data.name,
+                    };
+                    setSkills((prev) => {
+                      // avoid duplicates
+                      if (prev.some((p) => p.sid === created.sid))
+                        return prev;
+                      return [...prev, created];
+                    });
+                    onChange(selected.map(s => typeof s === "string" ? created.sid : s.sid));
+                  }
+                });
+              }
+            } else {
+              onChange(selected.map((s) => s.sid));
+            }
+          }}
+          renderTags={(selected, getTagProps) =>
+            selected.map((option, index) => (
+              <Chip
+                key={option.sid}
+                label={option.name}
+                size="small"
+                {...getTagProps({ index })}
+              />
+            ))
+          }
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              variant="standard"
+              placeholder="Add skills"
+            />
+          )}
+        />
+      ),
+      dispComponent: (value = []) => (
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+          {value
+            .map((sid) => skills.find((s) => s.sid === sid))
+            .filter(Boolean)
+            .map((s) => (
+              <Chip key={s.sid} label={s.name} size="small" />
+            ))}
+        </Box>
+      ),
+    },
+    {
       property: "description",
       display: "Description",
       width: 0,
@@ -348,6 +434,12 @@ const DashboardPage = () => {
   const isApplicationOrigin = (application) => {
     return !columns.some((column) => {
       if (column.visible && column.default !== undefined) {
+        // compare arrays by length for skills
+        if (column.property === "skills") {
+          return (
+            (application.skills || []).length !== (column.default || []).length
+          );
+        }
         return application[column.property] !== column.default;
       }
       return false;
@@ -363,6 +455,13 @@ const DashboardPage = () => {
         application[column.property] !== undefined
       ) {
         const columnFilter = column.filter(application[column.property]);
+        if (column.property === "skills") {
+          // if skills selected, filter apps that contain all selected skills ids
+          if ((application.skills || []).length) {
+            return { ...filters, skills: { $all: application.skills } };
+          }
+          return filters;
+        }
         if (
           column.default !== undefined &&
           application[column.property] != column.default
@@ -615,12 +714,13 @@ const DashboardPage = () => {
       }
       return sum + column.width + 4;
     }, 88);
-    setFlexibleWidth((tableWidth - width) / flexibleCount);
+    const computed = flexibleCount ? (tableWidth - width) / flexibleCount : 0;
+    setFlexibleWidth(computed > 0 ? computed : 0);
   }, [tableWidth, columns.filter((c) => c.visible).map((c) => c.visible)]);
 
   useEffect(() => {
     setColumns(buildColumnsData());
-  }, [users]);
+  }, [users, skills]);
 
   // First load
   useEffect(() => {
@@ -636,6 +736,13 @@ const DashboardPage = () => {
     } else {
       router.push("/signin");
     }
+
+    // Load skills list
+    lookupSkill({}, (resp) => {
+      if (resp.result && Array.isArray(resp.data)) {
+        setSkills(resp.data.map((s) => ({ sid: s.sid, name: s.name })));
+      }
+    });
 
     setTimeout(() => {
       // Table Width Observe
@@ -728,18 +835,9 @@ const DashboardPage = () => {
                     <TableCell
                       key={column.property}
                       sx={{
-                        maxWidth:
-                          column.property === "description"
-                            ? flexibleWidth
-                            : column.width,
-                        minWidth:
-                          column.property === "description"
-                            ? flexibleWidth
-                            : column.width,
-                        width:
-                          column.property === "description"
-                            ? flexibleWidth
-                            : column.width,
+                        maxWidth: column.width ? column.width : flexibleWidth,
+                        minWidth: column.width ? column.width : flexibleWidth,
+                        width: column.width ? column.width : flexibleWidth,
                         padding: "2px !important",
                       }}
                     >
@@ -776,18 +874,9 @@ const DashboardPage = () => {
                       key={column.property}
                       sx={{
                         verticalAlign: "bottom",
-                        maxWidth:
-                          column.property === "description"
-                            ? flexibleWidth
-                            : column.width,
-                        minWidth:
-                          column.property === "description"
-                            ? flexibleWidth
-                            : column.width,
-                        width:
-                          column.property === "description"
-                            ? flexibleWidth
-                            : column.width,
+                        maxWidth: column.width ? column.width : flexibleWidth,
+                        minWidth: column.width ? column.width : flexibleWidth,
+                        width: column.width ? column.width : flexibleWidth,
                         padding: "2px !important",
                       }}
                     >
@@ -843,9 +932,13 @@ const DashboardPage = () => {
                           key={column.property}
                           sx={{
                             padding: "2px !important",
-                            maxWidth: column.width,
-                            minWidth: column.width,
-                            width: column.width,
+                            maxWidth: column.width
+                              ? column.width
+                              : flexibleWidth,
+                            minWidth: column.width
+                              ? column.width
+                              : flexibleWidth,
+                            width: column.width ? column.width : flexibleWidth,
                             maxHeight: "40px !important",
                             height: "40px !important",
                             fontSize: "12px !important",
