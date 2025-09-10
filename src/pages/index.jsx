@@ -301,6 +301,33 @@ const DashboardPage = () => {
         ) : null,
     },
     {
+      property: "description",
+      display: "Description",
+      width: 0,
+      default: "",
+      visible: true,
+      editable: true,
+      clickable: true,
+      filter: (value) => ({ description: handleEscape(value) }),
+      editComponent: (value, onChange) => (
+        <InputBox
+          multiline={true}
+          value={value ?? ""}
+          onChange={(newValue) => onChange(newValue)}
+        />
+      ),
+      dispComponent: (value) => (
+        <p
+          style={{
+            width: "100%",
+            overflow: "hidden",
+          }}
+        >
+          {value}
+        </p>
+      ),
+    },
+    {
       property: "skills",
       display: "Skills",
       width: 0,
@@ -309,7 +336,10 @@ const DashboardPage = () => {
       editable: true,
       clickable: true,
       // Empty selection should not filter anything
-      filter: (skills) => (Array.isArray(skills) && skills.length > 0 ? { skills: { $all: skills } } : {}),
+      filter: (skills) =>
+        Array.isArray(skills) && skills.length > 0
+          ? { skills: { $all: skills } }
+          : {},
       // filter omitted for now or implement contains-any
       editComponent: (value = [], onChange) => (
         <Autocomplete
@@ -409,33 +439,6 @@ const DashboardPage = () => {
         );
       },
     },
-    {
-      property: "description",
-      display: "Description",
-      width: 0,
-      default: "",
-      visible: true,
-      editable: true,
-      clickable: true,
-      filter: (value) => ({ description: handleEscape(value) }),
-      editComponent: (value, onChange) => (
-        <InputBox
-          multiline={true}
-          value={value ?? ""}
-          onChange={(newValue) => onChange(newValue)}
-        />
-      ),
-      dispComponent: (value) => (
-        <p
-          style={{
-            width: "100%",
-            overflow: "hidden",
-          }}
-        >
-          {value}
-        </p>
-      ),
-    },
   ];
 
   // Dynamic columns configuration
@@ -476,7 +479,6 @@ const DashboardPage = () => {
   };
 
   const buildFilterObject = (application) => {
-    let flag = false;
     let dynamicFilters = columns.reduce((filters, column) => {
       if (
         column.visible &&
@@ -484,12 +486,6 @@ const DashboardPage = () => {
         application[column.property] !== undefined
       ) {
         const columnFilter = column.filter(application[column.property]);
-        if (
-          column.default !== undefined &&
-          application[column.property] != column.default
-        ) {
-          flag = true;
-        }
         return { ...filters, ...columnFilter };
       }
       return filters;
@@ -734,14 +730,126 @@ const DashboardPage = () => {
         return sum;
       }
       return sum + column.width + 4;
-    }, 88);
-    const computed = flexibleCount ? (tableWidth - width) / flexibleCount : 0;
+    }, 84);
+    const computed = flexibleCount ? (tableWidth - width) / flexibleCount - 4 : 0;
     setFlexibleWidth(computed > 0 ? computed : 0);
   }, [tableWidth, columns.filter((c) => c.visible).map((c) => c.visible)]);
 
+  // ========================= Rebuild Append Bar with changes ==================
   useEffect(() => {
-    setColumns(buildColumnsData());
-  }, [users, skills]);
+    const newColumns = buildColumnsData();
+    setColumns([
+      ...newColumns.map((column) =>
+        column.property === "skills"
+          ? {
+              ...column,
+              editComponent: (value, onChange) => (
+                <SeekerSelector
+                  value={value}
+                  onChange={(newValue) => onChange(newValue)}
+                  items={users}
+                  width={130}
+                />
+              ),
+            }
+          : column
+      ),
+    ]);
+  }, [users]);
+
+  useEffect(() => {
+    const newColumns = buildColumnsData();
+    setColumns([
+      ...newColumns.map((column) =>
+        column.property === "skills"
+          ? {
+              ...column,
+              editComponent: (value = [], onChange) => (
+                <Autocomplete
+                  multiple
+                  freeSolo
+                  options={skills}
+                  getOptionLabel={(opt) =>
+                    typeof opt === "string" ? opt : opt.name
+                  }
+                  value={value
+                    .map((sid) => skills.find((s) => s.sid === sid))
+                    .filter(Boolean)}
+                  size="small"
+                  onChange={async (_, selected) => {
+                    const last = selected.at(-1);
+                    if (typeof last === "string") {
+                      const input = last.trim();
+                      const exact = skills.find(
+                        (s) => s.name.toLowerCase() === input.toLowerCase()
+                      );
+                      if (exact) {
+                        onChange([
+                          ...new Set(
+                            selected.map((s) =>
+                              typeof s === "string" ? exact.sid : s.sid
+                            )
+                          ),
+                        ]);
+                      } else {
+                        console.log(input);
+                        createSkill({ name: input }, (resp) => {
+                          if (resp.result && resp.data) {
+                            const created = {
+                              sid: resp.data.sid,
+                              name: resp.data.name,
+                            };
+                            setSkills((prev) => {
+                              // avoid duplicates
+                              if (prev.some((p) => p.sid === created.sid))
+                                return prev;
+                              return [...prev, created];
+                            });
+                            onChange(
+                              selected.map((s) =>
+                                typeof s === "string" ? created.sid : s.sid
+                              )
+                            );
+                          }
+                        });
+                      }
+                    } else {
+                      onChange(selected.map((s) => s.sid));
+                    }
+                  }}
+                  renderTags={(selected, getTagProps) => {
+                    if (!selected.length) return null;
+                    const [first, ...rest] = selected;
+                    return (
+                      <>
+                        <Chip key={first.sid} label={first.name} size="small" />
+                        {rest.length > 0 && (
+                          <SkillsTooltip items={rest} placement="top">
+                            <Chip
+                              key="more"
+                              label={`+${rest.length}`}
+                              size="small"
+                            />
+                          </SkillsTooltip>
+                        )}
+                      </>
+                    );
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      variant="standard"
+                      placeholder="Add skills"
+                    />
+                  )}
+                />
+              ),
+            }
+          : column
+      ),
+    ]);
+  }, [skills]);
+  // ============================================================================
 
   // First load
   useEffect(() => {
@@ -1046,6 +1154,10 @@ const DashboardPage = () => {
         onClose={handleCloseApplication}
         onSave={handleSaveApplication}
         editableColumns={columns.filter((col) => col.editable)}
+        users={users}
+        skills={skills}
+        createSkill={createSkill}
+        setSkills={setSkills}
       ></ApplicationEditer>
       <Dialog
         open={loading}

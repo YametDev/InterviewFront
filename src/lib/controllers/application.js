@@ -5,36 +5,32 @@ import dbConnect from "../mongodb";
 export const lookup = async (req, res) => {
   await dbConnect();
 
-  const clientStartDate = DateTime.fromFormat(
-    req.body.date,
-    "yyyy-MM-dd"
-  ).startOf("day");
-  const clientEndDate = DateTime.fromFormat(req.body.date, "yyyy-MM-dd").endOf(
-    "day"
-  );
-
-  // Adjust client date range to UTC using the provided timezone offset
-  const startOfDayUTC = clientStartDate
-    .minus({ minutes: req.body.offset })
-    .toJSDate();
-  const endOfDayUTC = clientEndDate
-    .minus({ minutes: req.body.offset })
-    .toJSDate();
+  const { date, offset, from, count, ...others } = req.body;
 
   // Find query
-  let find = {
-    userId: req.body?.userId,
-    company: req.body?.company,
-    link: req.body?.link,
-    role: req.body?.role,
-    state: req.body?.state,
-    description: req.body?.description,
-  };
-  if (!(req.body.date.length === 0 || req.body.date === "0000-00-00")) {
-    find = { ...find, createdAt: { $gte: startOfDayUTC, $lte: endOfDayUTC } };
-  }
-  if (req.body.skills !== undefined) {
-    find = { ...find, skills: req.body.skills };
+  let find = { ...others };
+
+  if (date !== undefined) {
+    const clientStartDate = DateTime.fromFormat(
+      date,
+      "yyyy-MM-dd"
+    ).startOf("day");
+    const clientEndDate = DateTime.fromFormat(
+      date,
+      "yyyy-MM-dd"
+    ).endOf("day");
+
+    // Adjust client date range to UTC using the provided timezone offset
+    const startOfDayUTC = clientStartDate
+      .minus({ minutes: offset })
+      .toJSDate();
+    const endOfDayUTC = clientEndDate
+      .minus({ minutes: offset })
+      .toJSDate();
+
+    if (!(date.length === 0 || date === "0000-00-00")) {
+      find = { ...find, createdAt: { $gte: startOfDayUTC, $lte: endOfDayUTC } };
+    }
   }
 
   try {
@@ -42,8 +38,8 @@ export const lookup = async (req, res) => {
     console.log(count);
 
     const applications = await Application.find(find)
-      .skip(req.body.from)
-      .limit(req.body.count)
+      .skip(from)
+      .limit(count)
       .sort({ createdAt: -1 });
 
     if (applications && applications.length > 0) {
@@ -54,7 +50,7 @@ export const lookup = async (req, res) => {
         data: applications.map((record) => {
           const utcDate = new Date(record.createdAt);
           const localDate = new Date(
-            utcDate.getTime() - req.body.offset * 60000
+            utcDate.getTime() - offset * 60000
           );
 
           return {
