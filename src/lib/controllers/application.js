@@ -34,8 +34,8 @@ export const lookup = async (req, res) => {
   }
 
   try {
-    const count = await Application.countDocuments(find);
-    console.log(count);
+    const countDocuments = await Application.countDocuments(find);
+    console.log(countDocuments);
 
     const applications = await Application.find(find)
       .skip(from)
@@ -58,7 +58,7 @@ export const lookup = async (req, res) => {
             createdAt: localDate.toISOString().split("T")[0],
           };
         }),
-        count,
+        count: countDocuments,
       });
     } else {
       res.send({ result: true, data: [], count: 0 });
