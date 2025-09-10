@@ -320,6 +320,7 @@ const DashboardPage = () => {
           value={value
             .map((sid) => skills.find((s) => s.sid === sid))
             .filter(Boolean)}
+          size="small"
           onChange={async (_, selected) => {
             const last = selected.at(-1);
             if (typeof last === "string") {
@@ -551,9 +552,7 @@ const DashboardPage = () => {
     const filterObject = buildFilterObject(application);
 
     lookupApplication(filterObject, (response) => {
-      if (anim) {
-        setLoading(false);
-      }
+      setLoading(false);
       if (response.result && Array.isArray(response.data)) {
         setRows(response.data);
         setStates(response.data.map(() => false));
