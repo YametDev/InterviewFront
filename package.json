@@ -29,7 +29,7 @@
     "mongoose": "^8.18.0",
     "mongoose-sequence": "^6.0.1",
     "multer": "^2.0.2",
-    "next": "15.5.2",
+    "next": "15.5.9",
     "next-connect": "^1.0.0",
     "next-redux-wrapper": "^8.1.0",
     "proxy-agent": "^6.5.0",
